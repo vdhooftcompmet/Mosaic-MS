@@ -1,0 +1,6 @@
+Building DAG of jobs...
+MissingInputException in rule clean_mgf in file C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\snakemake\Snakefile, line 64:
+Missing input files for rule clean_mgf:
+    output: results/input_cleaned.mgf
+    affected files:
+        data/input.mgf

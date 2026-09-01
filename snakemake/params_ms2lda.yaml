@@ -1,5 +1,5 @@
 
-iterations: 1000
+iterations: 2500
 nr_of_motifs: 400
 top_n_words: 50
 

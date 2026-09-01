@@ -1,0 +1,200 @@
+import os
+from pathlib import Path
+
+
+# Base path relative to where this Snakefile is stored
+SNAKEFILE_DIR = Path(workflow.current_basedir).resolve()
+REPO = SNAKEFILE_DIR.parent
+
+# Load config directly from the repository root using SNAKEFILE_DIR
+configfile: str(SNAKEFILE_DIR / "config.yaml")
+
+PYTHON = (REPO / config["environment"]["python_bin"]).resolve().as_posix()
+
+
+# Set the working directory for all shell commands & execution
+workdir: REPO
+
+# Force Snakemake to use Git Bash on Windows if available
+if os.name == 'nt' and Path("C:/Program Files/Git/bin/bash.exe").exists():
+    shell.executable("C:/Program Files/Git/bin/bash.exe")
+
+# Input paths from config (now naturally resolved relative to repository root)
+RESULT_FOLDER = config["paths"]["result_dir"]
+INPUT_MGF     = config["inputs"]["raw_mgf"]
+STEM          = Path(INPUT_MGF).stem
+CLEANED_MGF   = f"{RESULT_FOLDER}/{STEM}_cleaned.mgf"
+
+# Extract parameters
+MAX_COMPONENT_SIZES = config["parameters"]["max_component_sizes"]
+SIMILARITY_TYPES    = config["parameters"]["similarity_types"]
+MATRIX_TYPES        = config["parameters"]["matrix_types"]
+GRAPH_TYPES         = config["parameters"]["graph_types"]
+NR_OF_MOTIFS        = config["parameters"]["nr_of_motifs"]
+
+wildcard_constraints:
+    similarity_type     = "|".join(SIMILARITY_TYPES),
+    max_component_size  = "|".join([str(x) for x in MAX_COMPONENT_SIZES]),
+    matrix_type         = "|".join(MATRIX_TYPES),
+    graph_type          = "|".join(GRAPH_TYPES),
+    nr_of_motifs        = "|".join([str(x) for x in NR_OF_MOTIFS]),
+
+# Dynamic Parameter Helpers
+def get_dynamic_threshold(wildcards):
+    return "--similarity-threshold 0.85" if wildcards.similarity_type == "ms2deepscore" else "--similarity-threshold 0.7"
+
+def get_dynamic_matrix(wildcards):
+    return "--use-average-similarity" if wildcards.matrix_type == "average" else ""
+
+# Target Rule
+rule all:
+    input:
+        expand(
+            f"{RESULT_FOLDER}/{{similarity_type}}_{{max_component_size}}_{{matrix_type}}_{STEM}_{{graph_type}}.cx",
+            similarity_type=SIMILARITY_TYPES, matrix_type=MATRIX_TYPES, graph_type=GRAPH_TYPES, max_component_size=MAX_COMPONENT_SIZES, nr_of_motifs=NR_OF_MOTIFS
+        ),
+        expand(
+            f"{RESULT_FOLDER}/snapms_{{nr_of_motifs}}_{{similarity_type}}_{{max_component_size}}_{{matrix_type}}_{STEM}_{{graph_type}}",
+            similarity_type=SIMILARITY_TYPES, matrix_type=MATRIX_TYPES, graph_type=GRAPH_TYPES, max_component_size=MAX_COMPONENT_SIZES, nr_of_motifs=NR_OF_MOTIFS
+        ),
+        expand(
+            f"{RESULT_FOLDER}/{{nr_of_motifs}}_plots",
+            nr_of_motifs=NR_OF_MOTIFS
+        )
+
+rule clean_mgf:
+    input:
+        mgf = INPUT_MGF
+    output:
+        mgf = CLEANED_MGF
+    shell:
+        """
+        set -euo pipefail
+        "{PYTHON}" src/utils/cleaning.py \
+            --raw-mgf "{input.mgf}" \
+            --cleaned-mgf "{output.mgf}"
+        """
+
+rule mn:
+    input:
+        mgf = CLEANED_MGF,
+        params = config["params_files"]["mn"],
+        ms2deepscore_model = config["models"]["ms2deepscore"],
+        spec2vec_model = config["models"]["spec2vec"]
+    output:
+        base = f"{RESULT_FOLDER}/{{similarity_type}}_{{max_component_size}}_{{matrix_type}}_{STEM}_base.cx",
+        threshold = f"{RESULT_FOLDER}/{{similarity_type}}_{{max_component_size}}_{{matrix_type}}_{STEM}_threshold.cx",
+        rescued = f"{RESULT_FOLDER}/{{similarity_type}}_{{max_component_size}}_{{matrix_type}}_{STEM}_rescued.cx"
+    params:
+        threshold = get_dynamic_threshold,
+        matrix = get_dynamic_matrix
+    shell:
+        """
+        set -euo pipefail
+        "{PYTHON}" src/mn \
+            --defaults "{input.params}" \
+            --mgf-cleaned "{input.mgf}" \
+            --ms2deepscore-model-path "{input.ms2deepscore_model}" \
+            --spec2vec-model-path "{input.spec2vec_model}" \
+            --similarity-type "{wildcards.similarity_type}" \
+            --max-component-size "{wildcards.max_component_size}" \
+            --base-graph-path "{output.base}" \
+            --threshold-graph-path "{output.threshold}" \
+            --rescued-graph-path "{output.rescued}" \
+            --average-similarity-file "{RESULT_FOLDER}/{wildcards.similarity_type}_average_similarity.npz" \
+            --similarity-file "{RESULT_FOLDER}/{wildcards.similarity_type}_similarity.npz" \
+            --support-file "{RESULT_FOLDER}/{wildcards.similarity_type}_support.npz" \
+            {params.threshold} \
+            {params.matrix}
+        """
+
+rule motif_overlap:
+    input:
+        mgf = CLEANED_MGF,
+        lda_model = f"{RESULT_FOLDER}/{{nr_of_motifs}}_model.model"
+    output:
+        overlaps = f"{RESULT_FOLDER}/{{nr_of_motifs}}_motif_overlaps.csv"
+    shell:
+        """
+        set -euo pipefail
+        "{PYTHON}" src/motif_metadata/motif_detection.py \
+            --mgf "{input.mgf}" \
+            --model "{input.lda_model}" \
+            --result "{output.overlaps}" \
+            --dataset-acquisition-type DDA \
+            --dataset-significant-digits 2
+        """
+
+rule snapms:
+    input:
+        params = config["params_files"]["snapms"],
+        mn = f"{RESULT_FOLDER}/{{similarity_type}}_{{max_component_size}}_{{matrix_type}}_{STEM}_{{graph_type}}.cx",
+        overlaps = f"{RESULT_FOLDER}/{{nr_of_motifs}}_motif_overlaps.csv",
+        structure_db = config["models"]["structure_db"]
+    output:
+        result_folder = directory(f"{RESULT_FOLDER}/snapms_{{nr_of_motifs}}_{{similarity_type}}_{{max_component_size}}_{{matrix_type}}_{STEM}_{{graph_type}}")
+    shell:
+        """
+        set -euo pipefail
+        "{PYTHON}" src/motif_metadata/mn_motif_metadata.py \
+            --mn-file "{input.mn}" \
+            --overlaps "{input.overlaps}" \
+            --threshold 0.01
+
+        "{PYTHON}" src/snapms \
+            --graph "{input.mn}" \
+            --defaults "{input.params}" \
+            --result-folder "{output.result_folder}" \
+            --reference-db "{input.structure_db}"
+
+        "{PYTHON}" src/annotation_metadata/relay_annotation_info.py \
+            --mn-file "{input.mn}" \
+            --annotation-folder "{output.result_folder}"
+
+        "{PYTHON}" src/annotation_metadata/smiles_flag.py \
+            --mn-file "{input.mn}" \
+            --annotation-folder "{output.result_folder}"
+        """
+
+rule plot_motifs:
+    input:
+        motifs = f"{RESULT_FOLDER}/{{nr_of_motifs}}_motifs.mgf",
+        params = config["params_files"]["ms2lda"],
+        mgf = CLEANED_MGF,
+        model = f"{RESULT_FOLDER}/{{nr_of_motifs}}_model.model"
+    output:
+        result_folder = directory(f"{RESULT_FOLDER}/{{nr_of_motifs}}_plots")
+    shell:
+        """
+        set -euo pipefail
+        "{PYTHON}" src/motif_metadata/spectral_plots.py \
+            --defaults "{input.params}" \
+            --library "{input.mgf}" \
+            --query "{input.motifs}" \
+            --similarity-type overlap \
+            --flash-tolerance 0.01 \
+            --lda-model-path "{input.model}" \
+            --max-batch-size 200 \
+            --similarity-threshold 0.01 \
+            --top-n 100 \
+            --result-folder "{output.result_folder}"
+        """
+
+rule ms2lda:
+    input:
+        params = config["params_files"]["ms2lda"],
+        mgf = INPUT_MGF
+    output:
+        model   = f"{RESULT_FOLDER}/{{nr_of_motifs}}_model.model",
+        motifs  = f"{RESULT_FOLDER}/{{nr_of_motifs}}_motifs.mgf"
+    shell:
+        """
+        set -euo pipefail
+        "{PYTHON}" src/ms2lda \
+            --defaults "{input.params}" \
+            --mgf "{input.mgf}" \
+            --mgf-cleaned "{CLEANED_MGF}" \
+            --nr-of-motifs "{wildcards.nr_of_motifs}" \
+            --model-path "{output.model}" \
+            --motifs-path "{output.motifs}"
+        """

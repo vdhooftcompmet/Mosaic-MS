@@ -1,0 +1,2 @@
+WorkflowError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 47:
+Flags ({'directory': True}) in file pattern 'results/snapms_{nr_of_motifs}_{similarity_type}_{max_component_size}_{matrix_type}_input_{graph_type}' given to expand() are invalid. Flags (e.g. temp(), directory()) have to be applied outside of expand (e.g. 'temp(expand("plots/{sample}.pdf", sample=SAMPLES))').

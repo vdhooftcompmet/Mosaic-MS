@@ -1,0 +1,38 @@
+Building DAG of jobs...
+Using shell: C:/Program Files/Git/bin/bash.exe
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Job stats:
+job       count
+------  -------
+all           1
+snapms        1
+total         2
+
+Select jobs to execute...
+
+[Wed Aug 26 23:48:57 2026]
+rule snapms:
+    input: snakemake/params_snapms.yaml, results/modcos_100_normal_input_threshold.cx, results/300_motif_overlaps.csv, data/coconut_db.jsonl
+    output: results/snapms_300_modcos_100_normal_input_threshold
+    jobid: 3
+    reason: Missing output files: results/snapms_300_modcos_100_normal_input_threshold
+    wildcards: nr_of_motifs=300, similarity_type=modcos, max_component_size=100, matrix_type=normal, graph_type=threshold
+    resources: tmpdir=C:\Users\JORICK~1\AppData\Local\Temp
+
+[Wed Aug 26 23:50:40 2026]
+Finished job 3.
+1 of 2 steps (50%) done
+Select jobs to execute...
+
+[Wed Aug 26 23:50:40 2026]
+localrule all:
+    input: results/modcos_100_normal_input_threshold.cx, results/snapms_300_modcos_100_normal_input_threshold, results/300_plots
+    jobid: 0
+    reason: Input files updated by another job: results/snapms_300_modcos_100_normal_input_threshold
+    resources: tmpdir=C:\Users\JORICK~1\AppData\Local\Temp
+
+[Wed Aug 26 23:50:40 2026]
+Finished job 0.
+2 of 2 steps (100%) done
+Complete log: snakemake\.snakemake\log\2026-08-26T234855.466510.snakemake.log

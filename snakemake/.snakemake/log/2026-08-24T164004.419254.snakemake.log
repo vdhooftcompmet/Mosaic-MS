@@ -1,0 +1,3 @@
+TypeError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 46:
+unsupported operand type(s) for /: 'str' and 'str'
+  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 46, in <module>

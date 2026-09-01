@@ -1,0 +1,43 @@
+Building DAG of jobs...
+Using shell: C:/Program Files/Git/bin/bash.exe
+Provided cores: 2
+Rules claiming more threads will be scaled down.
+Job stats:
+job       count
+------  -------
+all           1
+snapms        1
+total         2
+
+Select jobs to execute...
+
+[Wed Aug 26 23:28:23 2026]
+rule snapms:
+    input: snakemake/params_snapms.yaml, results/modcos_100_normal_input_threshold.cx, results/300_motif_overlaps.csv, data/coconut_db.jsonl
+    output: results/snapms_300_modcos_100_normal_input_threshold
+    jobid: 3
+    reason: Missing output files: results/snapms_300_modcos_100_normal_input_threshold
+    wildcards: nr_of_motifs=300, similarity_type=modcos, max_component_size=100, matrix_type=normal, graph_type=threshold
+    resources: tmpdir=C:\Users\JORICK~1\AppData\Local\Temp
+
+[Wed Aug 26 23:28:27 2026]
+Error in rule snapms:
+    jobid: 3
+    input: snakemake/params_snapms.yaml, results/modcos_100_normal_input_threshold.cx, results/300_motif_overlaps.csv, data/coconut_db.jsonl
+    output: results/snapms_300_modcos_100_normal_input_threshold
+    shell:
+        
+        set -euo pipefail
+        "C:/Users/Jorick van IJcken/code/testversion/STRATA-MS/.venv/Scripts/python.exe" src/motif_metadata/mn_motif_metadata.py             --mn-file "results/modcos_100_normal_input_threshold.cx"             --overlaps "results/300_motif_overlaps.csv"             --threshold 0.01
+
+        "C:/Users/Jorick van IJcken/code/testversion/STRATA-MS/.venv/Scripts/python.exe" src/snapms             --graph "results/modcos_100_normal_input_threshold.cx"             --defaults "snakemake/params_snapms.yaml"             --result-folder "results/snapms_300_modcos_100_normal_input_threshold"             --reference-db "data/coconut_db.jsonl"
+
+        "C:/Users/Jorick van IJcken/code/testversion/STRATA-MS/.venv/Scripts/python.exe" src/annotation_metadata/relay_annotation_info.py             --mn-file "results/modcos_100_normal_input_threshold.cx"             --annotation-folder "results/snapms_300_modcos_100_normal_input_threshold"
+
+        "C:/Users/Jorick van IJcken/code/testversion/STRATA-MS/.venv/Scripts/python.exe" src/annotation_metadata/smiles_flag.py             --mn-file "results/modcos_100_normal_input_threshold.cx"             --annotation-folder "results/snapms_300_modcos_100_normal_input_threshold"
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: snakemake\.snakemake\log\2026-08-26T232821.560867.snakemake.log

@@ -13,9 +13,11 @@ from utils.constants import *
 from utils.cx import write_cx
 from setup.paths import MN_STYLE_FILE
 
+
+
 GRAPH_FUNCTIONS = {
-    "base"      : base_graph, 
-    "threshold" : threshold_graph, 
+    "base"      : base_graph,
+    "threshold" : threshold_graph,
     "rescued"   : rescued_graph
 }
 
@@ -31,7 +33,7 @@ def main(params: Namespace) -> None:
     else:
         print("> cleaning spectra...")
         spectra = list(clean_mgf(params.mgf))
-        
+
         print("> saving cleaned spectral data...")
         cleaned_path = Path(params.mgf_cleaned)
         save_as_mgf(spectra, str(cleaned_path), file_mode="w")
@@ -54,7 +56,7 @@ def load_similarity(spectra: list[Spectrum], params: Namespace) -> tuple[np.ndar
     avg_sim_file    = Path(params.folder) / params.average_similarity_file
     sim_file        = Path(params.folder) / params.similarity_file
     sup_file        = Path(params.folder) / params.support_file
-    
+
     if avg_sim_file.exists() and sim_file.exists() and sup_file.exists() and params.cache_similarity:
 
         average_similarity = load_npz(avg_sim_file).toarray()
@@ -66,7 +68,7 @@ def load_similarity(spectra: list[Spectrum], params: Namespace) -> tuple[np.ndar
         save_npz(sim_file, csr_matrix(similarity))
 
         average_similarity, support = calculate_bootstrapping(spectra, params)
-        
+
         save_npz(avg_sim_file, csr_matrix(average_similarity))
         save_npz(sup_file, csr_matrix(support))
 

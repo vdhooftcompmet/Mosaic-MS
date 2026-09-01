@@ -1,0 +1,4 @@
+SyntaxError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 114:
+invalid syntax:
+            --lda-model-path {input.model} \
+

@@ -1,0 +1,25 @@
+Assuming unrestricted shared filesystem usage.
+
+SNAKEMAKE
+=========
+  Date: 2026-08-24 11:55:11
+  Workflow ID: 8db8fd54-ce78-45c3-89ad-9a0c133ac302
+  Platform: Windows-10-10.0.26200-SP0
+  Host: -PC-
+  User: Jorick van IJcken
+  Snakemake version: 9.25.2
+  Python version: 3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]
+  Command: C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Scripts\snakemake --cores 1
+  Snakefile: C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile
+  Base directory: C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow
+  Run directory: C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow
+  Working directory: C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow
+  Config file(s): []
+  Config MD5: 99914b932bd37a50b983c5e7c90ae93b
+
+Building DAG of jobs...
+MissingInputException in rule clean_mgf in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 97:
+Missing input files for rule clean_mgf:
+    output: /lustre/BIF/nobackup/ijcke001/media_screening055/media_screening_cleaned.mgf
+    affected files:
+        /lustre/BIF/nobackup/ijcke001/experimental_data/media_screening.mgf

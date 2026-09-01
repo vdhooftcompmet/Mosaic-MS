@@ -1,0 +1,35 @@
+# Execution & Pipeline Settings
+environment:
+  python_bin: ".venv/Scripts/python.exe"   # Windows
+
+# Paths to Input Files & Models
+inputs:
+  raw_mgf:      "data/input.mgf"
+models:
+  lda_model:    "data/lda_model.smk"      # dynamically created if non-existent
+  motifs:       "data/motifs.mgf"         # dynamically created if non-existent
+  ms2deepscore: "data/ms2deepscore_model.pt"
+  spec2vec:     "data/Spec2VecModel.model"
+  structure_db: "data/coconut_db.jsonl"
+
+paths:
+  result_dir: "results"
+
+# Pipeline Wildcards & Parameters
+parameters:
+  max_component_sizes:
+    - 100
+  similarity_types:
+    - "modcos"
+  matrix_types:
+    - "normal"
+  graph_types:
+    - "threshold"
+  nr_of_motifs:
+    - 300
+
+# Module Specific Parameters
+params_files:
+  mn:     "snakemake/params_mn.yaml"
+  snapms: "snakemake/params_snapms.yaml"
+  ms2lda: "snakemake/params_ms2lda.yaml"

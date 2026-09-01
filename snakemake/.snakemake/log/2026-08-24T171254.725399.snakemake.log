@@ -1,0 +1,4 @@
+SyntaxError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 1:
+invalid syntax:
+Here is the file with only every `python` execution keyword in the shell blocks replaced by `"{PYTHON}"`:
+

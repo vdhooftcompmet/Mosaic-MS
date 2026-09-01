@@ -1,0 +1,7 @@
+Injecting conda environment C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\environment.yaml.
+ValueError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 46:
+The list of packages contains python. This is not allowed as conda-inject automatically chooses a python version matching to the current environment.
+  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Lib\site-packages\conda_inject\__init__.py", line 145, in inject_env_file
+  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Lib\site-packages\conda_inject\__init__.py", line 123, in inject_env
+  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Lib\site-packages\conda_inject\__init__.py", line 203, in _check_env
+  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Lib\site-packages\conda_inject\__init__.py", line 218, in _check_packages

@@ -1,0 +1,9 @@
+Injecting conda environment C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\environment.yaml.
+FileNotFoundError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 46:
+[WinError 2] The system cannot find the file specified
+  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Lib\site-packages\conda_inject\__init__.py", line 145, in inject_env_file
+  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Lib\site-packages\conda_inject\__init__.py", line 127, in inject_env
+  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Lib\site-packages\conda_inject\__init__.py", line 185, in _get_envs
+  File "C:\Users\Jorick van IJcken\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 548, in run
+  File "C:\Users\Jorick van IJcken\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 1026, in __init__
+  File "C:\Users\Jorick van IJcken\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 1538, in _execute_child
