@@ -1,7 +1,8 @@
-name: mn310
+name: strata-ms
 channels:
   - conda-forge
   - bioconda
+  - defaults
 dependencies:
   # Core runtime
   - python>=3.10,<3.13
@@ -27,18 +28,9 @@ dependencies:
   - snakemake>=7.32.4
   - ndex2
   - ms2deepscore=2.6
-
-  # Optional / notebook tooling
-  - ipython>=8.26.0
-  - jupyterlab>=4.2.4
-
-  # Development tools
-  - black=24.3.0
-  - flake8=7.0.0
-  - mypy=1.10.0
-  - pre-commit=3.7.0
-  - pytest>=8.3.2
-  - ruff>=0.11.0
+  - python-dateutil
+  - rich
+  - pulp==2.7.0
 
   # Packages via pip
   - pip
@@ -50,4 +42,3 @@ dependencies:
       - spec2vec>=0.8.0
       - PyQt6>=6.7.1
       - faiss-cpu==1.10.0
-      - pulp==2.7.0
