@@ -1,11 +1,14 @@
 name: strata-ms
 channels:
+  - pytorch
   - conda-forge
   - bioconda
   - defaults
 dependencies:
-  # Core runtime
+  # Core runtime & PyTorch C++ runtime fixes
   - python>=3.10,<3.13
+  - cpuonly
+  - pytorch
   - numpy<2.2
   - matplotlib>=3.9.1
   - seaborn>=0.13.2
