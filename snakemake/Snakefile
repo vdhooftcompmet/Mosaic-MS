@@ -9,9 +9,6 @@ REPO = SNAKEFILE_DIR.parent
 # Load config directly from the repository root using SNAKEFILE_DIR
 configfile: str(SNAKEFILE_DIR / "config.yaml")
 
-PYTHON = (REPO / config["environment"]["python_bin"]).resolve().as_posix()
-
-
 # Set the working directory for all shell commands & execution
 workdir: REPO
 
@@ -70,7 +67,7 @@ rule clean_mgf:
     shell:
         """
         set -euo pipefail
-        "{PYTHON}" src/utils/cleaning.py \
+        python src/utils/cleaning.py \
             --raw-mgf "{input.mgf}" \
             --cleaned-mgf "{output.mgf}"
         """
@@ -91,7 +88,7 @@ rule mn:
     shell:
         """
         set -euo pipefail
-        "{PYTHON}" src/mn \
+        python src/mn \
             --defaults "{input.params}" \
             --mgf-cleaned "{input.mgf}" \
             --ms2deepscore-model-path "{input.ms2deepscore_model}" \
@@ -117,7 +114,7 @@ rule motif_overlap:
     shell:
         """
         set -euo pipefail
-        "{PYTHON}" src/motif_metadata/motif_detection.py \
+        python src/motif_metadata/motif_detection.py \
             --mgf "{input.mgf}" \
             --model "{input.lda_model}" \
             --result "{output.overlaps}" \
@@ -136,22 +133,22 @@ rule snapms:
     shell:
         """
         set -euo pipefail
-        "{PYTHON}" src/motif_metadata/mn_motif_metadata.py \
+        python src/motif_metadata/mn_motif_metadata.py \
             --mn-file "{input.mn}" \
             --overlaps "{input.overlaps}" \
             --threshold 0.01
 
-        "{PYTHON}" src/snapms \
+        python src/snapms \
             --graph "{input.mn}" \
             --defaults "{input.params}" \
             --result-folder "{output.result_folder}" \
             --reference-db "{input.structure_db}"
 
-        "{PYTHON}" src/annotation_metadata/relay_annotation_info.py \
+        python src/annotation_metadata/relay_annotation_info.py \
             --mn-file "{input.mn}" \
             --annotation-folder "{output.result_folder}"
 
-        "{PYTHON}" src/annotation_metadata/smiles_flag.py \
+        python src/annotation_metadata/smiles_flag.py \
             --mn-file "{input.mn}" \
             --annotation-folder "{output.result_folder}"
         """
@@ -167,7 +164,7 @@ rule plot_motifs:
     shell:
         """
         set -euo pipefail
-        "{PYTHON}" src/motif_metadata/spectral_plots.py \
+        python src/motif_metadata/spectral_plots.py \
             --defaults "{input.params}" \
             --library "{input.mgf}" \
             --query "{input.motifs}" \
@@ -190,7 +187,7 @@ rule ms2lda:
     shell:
         """
         set -euo pipefail
-        "{PYTHON}" src/ms2lda \
+        python src/ms2lda \
             --defaults "{input.params}" \
             --mgf "{input.mgf}" \
             --mgf-cleaned "{CLEANED_MGF}" \
