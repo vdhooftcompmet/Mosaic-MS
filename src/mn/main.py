@@ -13,6 +13,8 @@ from utils.constants import *
 from utils.cx import write_cx
 from setup.paths import MN_STYLE_FILE
 
+from utils.cleaning import clean_mgf
+
 
 
 GRAPH_FUNCTIONS = {

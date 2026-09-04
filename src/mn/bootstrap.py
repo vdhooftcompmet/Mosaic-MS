@@ -21,7 +21,7 @@ from matchms.similarity.FlashSimilarity import FlashSimilarity
 from matchms.filtering.default_pipelines import DEFAULT_FILTERS, CLEAN_PEAKS, REQUIRE_COMPLETE_METADATA
 from matchms.filtering.SpectrumProcessor import SpectrumProcessor
 
-
+from utils.context import suppress_output
 from utils.constants import *
 
 def run_bootstrap(
@@ -39,7 +39,9 @@ def plain_similarity(
         params: Namespace | None = None, 
 ):
     similarity_metric = get_similarity(params.similarity_type, params.flash_tolerance, params.ms2deepscore_model_path, params.spec2vec_model_path)
-    similarity_matrix = similarity_metric.matrix(list(spectra), list(spectra), array_type="numpy", is_symmetric=True)
+    with suppress_output():
+        similarity_matrix = similarity_metric.matrix(list(spectra), list(spectra), array_type="numpy", is_symmetric=True)
+
     return similarity_matrix
 
 
@@ -65,7 +67,8 @@ def calculate_bootstrapping(
         masked_spectra = _mask_spectra_globally(random_generator, bins, binned_spectra)
 
         with parallel_backend("loky", n_jobs=params.n_jobs):
-            similarity_matrix = similarity_metric.matrix(masked_spectra, masked_spectra, array_type="numpy", is_symmetric=True)
+            with suppress_output():
+                similarity_matrix = similarity_metric.matrix(masked_spectra, masked_spectra, array_type="numpy", is_symmetric=True)
 
         top_k_nearest_neighbours = mutual_topk(similarity_matrix, params.k)
         top_k_nearest_neighbours_binary = (top_k_nearest_neighbours != 0).astype(int)
@@ -79,19 +82,6 @@ def calculate_bootstrapping(
     np.fill_diagonal(mean_similarities , 1)  # needed to exaxtly match original implementation
     mean_edge_support = total_edge_support / params.B
     return mean_similarities, mean_edge_support
-
-
-def clean_mgf(path: Path | str) -> Generator[Spectrum, None, None]:
-    assert isinstance(path, str) or isinstance(path, Path), "path must be a Path object or a string"
-
-    spectra = load_from_mgf(path)
-    spectrum_processor = SpectrumProcessor(DEFAULT_FILTERS + CLEAN_PEAKS)
-    result, _ = spectrum_processor.process_spectra(spectra, progress_bar=False)
-
-    for i, spectrum in enumerate(result):
-        spectrum.set(KEY_SPECTRUM_ID, i)
-
-    return result
 
 
 def global_bins(spectra: List[Spectrum], decimals: int) -> np.ndarray[float]:
