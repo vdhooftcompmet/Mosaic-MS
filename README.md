@@ -23,7 +23,7 @@ Choose **one** of the following methods depending on your package manager prefer
 
 * **Using Pip:**
   ```bash
-  python py -3.11 -m venv venv
+  py -3.11 -m venv venv
   source venv/bin/activate  # On Windows use: venv\Scripts\activate
   pip install -r requirements.txt
   ```
@@ -40,11 +40,13 @@ python setup.py
 
 Once setup is complete, execute the demo workflow using Snakemake:
 
+Navigate to the workflow directory
 ```bash
-# Navigate to the workflow directory
 cd snakemake
+```
 
-# Run the pipeline locally using 1 CPU core
+Run the pipeline locally using 1 CPU core
+```bash
 snakemake --cores 1
 ```
 

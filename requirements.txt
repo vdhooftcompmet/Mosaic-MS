@@ -1,3 +1,4 @@
+numpy<2.2
 python-dateutil
 matplotlib>=3.9.1
 seaborn>=0.13.2
@@ -23,12 +24,3 @@ ndex2
 ms2deepscore
 pulp==2.7.0
 rich
-
-dash>=2.18.1
-dash_cytoscape>=1.0.2
-dash_bootstrap_components>=1.6.0
-PyQt6>=6.7.1
-
-tomotopy>=0.12.7
-spec2vec>=0.8.0
-faiss-cpu==1.10.0
