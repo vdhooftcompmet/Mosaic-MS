@@ -5,8 +5,9 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  # Core runtime & PyTorch C++ runtime fixes
+  # Core runtime & environment tools
   - python>=3.10,<3.13
+  - pip
   - cpuonly
   - pytorch
   - numpy<2.2
@@ -36,8 +37,7 @@ dependencies:
   - rich
   - pulp==2.7.0
 
-  # Packages via pip
-  - pip
+  # PyPI-only dependencies
   - pip:
       - dash>=2.18.1
       - dash_cytoscape>=1.0.2
