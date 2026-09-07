@@ -4,10 +4,11 @@ environment:
 
 # Paths to Input Files & Models
 inputs:
+  # name of the input mgf (pre-cleaning)
   raw_mgf:      "data/input.mgf"
+      
 models:
-  lda_model:    "data/lda_model.smk"      # dynamically created if non-existent
-  motifs:       "data/motifs.mgf"         # dynamically created if non-existent
+  # the below files are required and can be downloaded by running setup.py
   ms2deepscore: "data/ms2deepscore_model.pt"
   spec2vec:     "data/Spec2VecModel.model"
   structure_db: "data/coconut_db.jsonl"
@@ -16,20 +17,24 @@ paths:
   result_dir: "results"
 
 # Pipeline Wildcards & Parameters
+
+# these parameters allow for running of multiple variations by adding the the lists below
+# note that computational time will grow significantly with more possible variations
+
 parameters:
   max_component_sizes:
-    - 100
+    - 100         # other options: any positive integer
   similarity_types:
-    - "modcos"
+    - "modcos"    # other options: "modcos", "spec2vec", "ms2deepscore"
   matrix_types:
-    - "normal"
+    - "normal"    # other options: "normal", "average"
   graph_types:
-    - "threshold"
+    - "threshold" # other options: "base", "threshold", "rescued"
   nr_of_motifs:
-    - 300
+    - 300         # other options: any positive integer
 
 # Module Specific Parameters
 params_files:
-  mn:     "snakemake/params_mn.yaml"
-  snapms: "snakemake/params_snapms.yaml"
-  ms2lda: "snakemake/params_ms2lda.yaml"
+  mn:     "snakemake/params/mn.yaml"
+  snapms: "snakemake/params/snapms.yaml"
+  ms2lda: "snakemake/params/ms2lda.yaml"

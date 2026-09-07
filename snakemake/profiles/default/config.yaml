@@ -1,0 +1,5 @@
+cores: 8
+printshellcmds: true
+show-failed-logs: true
+keep-going: true
+rerun-incomplete: true
