@@ -4,3 +4,5 @@ results/*
 
 data/*
 !data/.gitkeep
+
+snakemake/.snakemake
