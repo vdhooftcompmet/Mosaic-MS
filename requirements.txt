@@ -24,3 +24,4 @@ ndex2
 ms2deepscore
 pulp==2.7.0
 rich
+onnxruntime
