@@ -15,3 +15,5 @@ use_average_similarity: false
 cache_similarity: true
 
 folder: "."
+cache_folder: "../cache"
+similarity_type: "cos"

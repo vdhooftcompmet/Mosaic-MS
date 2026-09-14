@@ -112,12 +112,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
     )
     p_build.add_argument(
-        "--mgf-cleaned",
-        type=str,
-        help="Save location of cleaned spectra. If it exists, cleaning is skipped.",
-        default=None,
-    )
-    p_build.add_argument(
         "--average-similarity-file",
         type=str,
         help="Path to save or load calculated average similarity matrices (.npz).",
@@ -250,12 +244,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--mgf", "-m",
         type=str,
         help="Path to the MGF spectrum data file to analyze.",
-        default=None,
-    )
-    p_run_ms2lda.add_argument(
-        "--mgf-cleaned",
-        type=str,
-        help="Save path for cleaned spectrum data; skips preprocessing if file exists.",
         default=None,
     )
     p_run_ms2lda.add_argument(
