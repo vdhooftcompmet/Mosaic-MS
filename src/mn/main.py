@@ -29,9 +29,9 @@ def main(params: Namespace) -> None:
     similarity, support = _similarity_cache(calculate_bootstrapping)(spectra, params)
 
     file_names = {
-        "base"      : "../results/base.cx", 
-        "threshold" : "../results/threshold.cx", 
-        "rescued"   : "../results/rescued.cx"
+        "base"      : params.base_graph_path, 
+        "threshold" : params.threshold_graph_path, 
+        "rescued"   : params.rescued_graph_path, 
     }
 
     for graph_type, file_name in file_names.items():

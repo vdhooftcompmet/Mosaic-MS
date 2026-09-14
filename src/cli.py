@@ -122,24 +122,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
     )
     p_build.add_argument(
-        "--average-similarity-file",
-        type=str,
-        help="Path to save or load calculated average similarity matrices (.npz).",
-        default=None,
-    )
-    p_build.add_argument(
-        "--similarity-file",
-        type=str,
-        help="Path to save or load calculated similarity matrices (.npz).",
-        default=None,
-    )
-    p_build.add_argument(
-        "--support-file",
-        type=str,
-        help="Path to save or load calculated SpecReBoot support matrices (.npz).",
-        default=None,
-    )
-    p_build.add_argument(
         "--similarity-type",
         choices=["cos", "modcos", "spec2vec", "ms2deepscore"],
         help="Similarity metric used for networking: cos, modcos, spec2vec, or ms2deepscore.",

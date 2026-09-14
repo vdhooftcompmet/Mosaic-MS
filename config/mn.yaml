@@ -17,3 +17,7 @@ cache_similarity: true
 folder: "."
 cache_folder: "../cache"
 similarity_type: "cos"
+
+base_graph_path: ../results/base.cx
+threshold_graph_path: ../results/threshold.cx
+rescued_graph_path: ../results/rescued.cx
