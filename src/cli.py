@@ -1,5 +1,15 @@
 import argparse
 from pathlib import Path
+import time
+
+
+OPTIMIZED_MODE = True
+
+if OPTIMIZED_MODE: # super hacky method to save on import time
+    import sys
+    from unittest.mock import MagicMock
+    
+    sys.modules['pynndescent'] = MagicMock() # this can save up to 10+ seconds of import time
 
 
 DEFAULT_CONFIG_DIR = Path("../config")

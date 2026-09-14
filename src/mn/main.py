@@ -29,9 +29,9 @@ def main(params: Namespace) -> None:
     similarity, support = _similarity_cache(calculate_bootstrapping)(spectra, params)
 
     file_names = {
-        "base"      : params.base_graph_path, 
-        "threshold" : params.threshold_graph_path, 
-        "rescued"   : params.rescued_graph_path
+        "base"      : "../results/base.cx", 
+        "threshold" : "../results/threshold.cx", 
+        "rescued"   : "../results/rescued.cx"
     }
 
     for graph_type, file_name in file_names.items():
@@ -47,7 +47,7 @@ def _similarity_cache(fn):
     def inner(spectra, params):
         files = {}
         for file_type in ["avg_sim", "tot_sim", "tot_sup"]:
-            files[file_type] = Path(params.cache_folder) / _make_cache_name(params.mgf, params.similarity_type, file_type)
+            files[file_type] = Path(params.cache_folder) / _make_cache_name(params.mgf, params.similarity_type, file_type, params.B)
     
         if all(f.exists() for f in files.values()):
             data = {data_type: load_npz(f).toarray() for data_type, f in files.items()}
@@ -59,7 +59,7 @@ def _similarity_cache(fn):
             if params.cache_similarity:
                 for file_type, file_name in files.items():
                     matrix = csr_matrix(data[file_type])
-                    save_npz(file_name, csr_matrix(matrix))
+                    save_npz(str(file_name), csr_matrix(matrix))
     
         if params.use_average_similarity:
             return data["avg_sim"], data["tot_sup"]
@@ -69,7 +69,7 @@ def _similarity_cache(fn):
     return inner
 
 
-def _make_cache_name(file_path: str | Path, method_name: str, data_type: str) -> str:
+def _make_cache_name(file_path: str | Path, method_name: str, data_type: str, B: int) -> str:
     hasher = hashlib.sha256()
 
     with open(file_path, "rb") as f:
@@ -78,8 +78,9 @@ def _make_cache_name(file_path: str | Path, method_name: str, data_type: str) ->
 
     hasher.update(method_name.lower().encode("utf-8"))
     hasher.update(data_type.lower().encode("utf-8"))
+    hasher.update(str(B).encode("utf-8"))
     hexadecimal_string = hasher.hexdigest()
-    file_name = f"{method_name}-{hexadecimal_string}.npz"
+    file_name = f"{method_name}-{hexadecimal_string[:20]}.npz"
     return file_name
         
 
