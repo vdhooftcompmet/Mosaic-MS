@@ -25,3 +25,4 @@ ms2deepscore
 pulp==2.7.0
 rich
 onnxruntime
+spec2vec>=0.9.1

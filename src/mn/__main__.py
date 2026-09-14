@@ -16,7 +16,6 @@ def cli() -> ArgumentParser:
     
     parser.add_argument("--folder", type=str)
     parser.add_argument("--mgf", type=str)
-    parser.add_argument("--mgf-cleaned", type=str)
 
     parser.add_argument("--average-similarity-file", type=str)
     parser.add_argument("--similarity-file", type=str)

@@ -1,0 +1,30 @@
+
+iterations: 2500
+nr_of_motifs: 400
+top_n_words: 50
+
+dataset_acquisition_type: DDA
+dataset_charge: 1
+dataset_significant_digits: 2
+
+train_parallel: 3
+train_workers: 1
+
+model_rm_top: 0
+model_min_cf: 0
+model_min_df: 3
+model_alpha: 0.6
+model_eta: 0.01
+model_seed: 42
+
+conv_step_size: 50
+conv_window_size: 10
+conv_threshold: 0.005
+conv_type: perplexity_history
+
+prep_min_mz: 0
+prep_max_mz: 2000
+prep_max_frags: 1000
+prep_min_frags: 5
+prep_min_intensity: 0.01
+prep_max_intensity: 1.0

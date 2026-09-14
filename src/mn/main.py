@@ -28,17 +28,7 @@ def main(params: Namespace) -> None:
     if not Path(params.folder).exists():
         prepare_directory(params.folder)
 
-    if Path(params.mgf_cleaned).exists():
-        print("loading cleaned data...")
-        spectra = list(load_from_mgf(params.mgf_cleaned))
-
-    else:
-        print("> cleaning spectra...")
-        spectra = list(clean_mgf(params.mgf))
-
-        print("> saving cleaned spectral data...")
-        cleaned_path = Path(params.mgf_cleaned)
-        save_as_mgf(spectra, str(cleaned_path), file_mode="w")
+    spectra = list(load_from_mgf(params.mgf_cleaned))
 
     similarity, support = load_similarity(spectra, params)
 
@@ -54,7 +44,7 @@ def main(params: Namespace) -> None:
         write_cx(graph, file_name, MN_STYLE_FILE)
 
 
-def load_similarity(spectra: list[Spectrum], params: Namespace) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def load_similarity(spectra: list[Spectrum], params: Namespace):
     avg_sim_file    = Path(params.folder) / params.average_similarity_file
     sim_file        = Path(params.folder) / params.similarity_file
     sup_file        = Path(params.folder) / params.support_file

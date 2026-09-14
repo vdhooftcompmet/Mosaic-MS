@@ -207,8 +207,10 @@ def add_defaults(params, defaults_path):
         default_params = load_params(defaults_path)
 
         for k, v in dict(vars(default_params)).items():
-            if not hasattr(params, k) or (getattr(params, k) is None):
-                setattr(params, k, v)
+            key_normalized = k.replace("-", "_")
+
+            if not hasattr(params, key_normalized) or (getattr(params, key_normalized) is None):
+                setattr(params, key_normalized, v)
 
 
 def completeness_check(params, allowed_missing=None):
