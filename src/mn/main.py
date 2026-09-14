@@ -58,7 +58,7 @@ def _similarity_cache(fn):
     
             if params.cache_similarity:
                 for file_type, file_name in files.items():
-                    matrix = csr_matrix(data[file_name])
+                    matrix = csr_matrix(data[file_type])
                     save_npz(file_name, csr_matrix(matrix))
     
         if params.use_average_similarity:
