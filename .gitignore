@@ -4,5 +4,6 @@ results/*
 
 data/*
 !data/.gitkeep
-
+.venv
+cache
 snakemake/.snakemake

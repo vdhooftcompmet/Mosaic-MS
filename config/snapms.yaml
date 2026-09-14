@@ -1,0 +1,17 @@
+ppm_error: 10
+min_cluster_size: 3
+max_cluster_size: 200
+min_annotation_size: 3
+cutoff: 0.6
+
+adduct_list:
+    - "[M+H]+"
+    - "[M+Na]+"
+    - "[M+NH4]+"
+    - "[2M+Na]+"
+
+remove_duplicates: True
+detect_adduct: True
+
+reference-db: ../data/coconut_db.jsonl
+result_folder: ../results/snapms

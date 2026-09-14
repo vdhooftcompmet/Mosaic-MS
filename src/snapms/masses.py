@@ -5,6 +5,7 @@ sys.path.append(parent_dir)
 
 import pandas as pd
 import networkx as nx
+from pathlib import Path
 
 from collections import defaultdict
 
@@ -14,6 +15,10 @@ from utils.constants import *
 
 # ATLAS
 def import_atlas(params: Namespace):
+    db_path = Path(params.reference_db)
+
+    if not db_path.exists():
+        raise FileNotFoundError(f"Reference DB file not found at: {db_path.resolve()}")
     input_df = pd.read_json(str(params.reference_db), lines=True)
 
     return input_df
