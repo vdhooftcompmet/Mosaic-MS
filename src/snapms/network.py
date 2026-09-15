@@ -6,11 +6,9 @@ sys.path.append(parent_dir)
 import numpy as np
 import networkx as nx
 
-from typing import  List
 from argparse import Namespace
-
-from utils.similarity_matrix import similarity_matrix
-from utils.constants import *
+from rdkit import DataStructs
+from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
 
 ID_COUNTER = -1
@@ -22,13 +20,27 @@ def get_unique_id():
     return ID_COUNTER
 
 
+def get_edges(matches: list[dict], cutoff=0.66) -> list[tuple[int, int]]:
+    fingerprints = []
+    for match in matches:
+        fp = ExplicitBitVect(2048)
+        fp.FromBase64(match["morgan_fingerprint"])
+        fingerprints.append(fp)
 
-def get_edges(matches: List[dict], cutoff=0.66) -> list[tuple[int, int]]:
-    smiles = [m[KEY_SMILES] for m in matches] 
-    similarity = similarity_matrix(smiles, smiles, "morgan", "dice")
-    rows, cols = np.where(np.triu(similarity, k=1) > cutoff)
-    edges = list(zip(rows, cols))
-    return edges
+    dice_matrix = np.zeros(shape=(len(matches), len(matches)))
+    for i, fp in enumerate(fingerprints):
+        dice_matrix[i, i+1:] = DataStructs.BulkDiceSimilarity(fp, fingerprints[i+1:])
+
+    rows, cols = np.where(np.triu(dice_matrix, k=1) > cutoff)
+
+    result = []
+    for u, v in zip(rows, cols):
+        if matches[u]["neutral_mass"] == matches[v]["neutral_mass"]:
+            continue
+
+        result.append((u, v))
+
+    return result
 
 
 def remove_self_similar_vals(edges):
@@ -48,16 +60,16 @@ def remove_small_subgraphs(graph: nx.Graph, params: Namespace):
 
 def add_top_candidate_annotation(graph: nx.Graph) -> None:
     clusters = [x for x in nx.connected_components(graph)]    
-    counts   = [_nr_of_unique_compounds(graph, c, KEY_MN_NODE_ID) for c in clusters]
+    counts   = [_nr_of_unique_compounds(graph, c, "mn_node_id") for c in clusters]
 
     for c, nodes in zip(counts, clusters):
         for node in nodes:
             if max(counts) <= 2:
-                graph.nodes[node][KEY_IS_TOP_CANDIDATE] = False
+                graph.nodes[node]["is_top_candidate"] = False
             else:
-                graph.nodes[node][KEY_IS_TOP_CANDIDATE] = (c == max(counts))
+                graph.nodes[node]["is_top_candidate"] = (c == max(counts))
 
-            graph.nodes[node][KEY_ANN_MASS_DIVERSITY] = c
+            graph.nodes[node]["ann_mass_diversity"] = c
 
 
 def _nr_of_unique_compounds(graph: nx.Graph, nodes: set, key: str) -> int:
@@ -70,4 +82,4 @@ def add_cluster_numbering(graph: nx.Graph):
     for cluster in ordered_clusters:
         i = get_unique_id()
         for node in cluster:
-            graph.nodes[node][KEY_MN_CLUSTER_ID] = i
+            graph.nodes[node]["mn_cluster_id"] = i
