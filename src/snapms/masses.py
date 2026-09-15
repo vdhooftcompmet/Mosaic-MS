@@ -157,13 +157,13 @@ def compute_adduct_matches(mn, nodes: dict, params: Namespace, db_df: pd.DataFra
 
             mass_error = round((neutral_mass * params.ppm_error) / 1e6, 4)
             
-            mask       = db_df[KEY_NEUTRAL_MASS].between(neutral_mass - mass_error, neutral_mass + mass_error)
+            mask       = db_df["neutral_mass"].between(neutral_mass - mass_error, neutral_mass + mass_error)
             db_matches = db_df[mask]
 
             if db_matches.empty: 
                 continue
 
-            db_matches = db_matches[[KEY_NEUTRAL_MASS, KEY_SMILES, KEY_INCHI_KEY]]
+            db_matches = db_matches[["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]]
 
             db_matches[KEY_MN_NODE_ID]      = node
             db_matches[KEY_ADDUCT]          = adduct
