@@ -1,9 +1,9 @@
 __pycache__/
 results/*
 !results/.gitkeep
-
 data/*
 !data/.gitkeep
 .venv
 cache
+!cache/.gitkeep
 snakemake/.snakemake
