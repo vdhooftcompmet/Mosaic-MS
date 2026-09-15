@@ -4,10 +4,10 @@ environment:
 
 # Paths to Input Files & Models
 inputs:
-  # name of the input mgf (pre-cleaning)
-  raw_mgf:      "data/input.mgf"
+  # name of the test_file mgf (pre-cleaning)
+  raw_mgf:      "data/test_file.mgf"
       
-models:
+models:z
   # the below files are required and can be downloaded by running setup.py
   ms2deepscore: "data/ms2deepscore_model.pt"
   spec2vec:     "data/Spec2VecModel.model"
