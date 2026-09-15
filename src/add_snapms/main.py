@@ -42,7 +42,7 @@ from setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
 def main(params):
     mn = read_cx(str(params.graph))
 
-    annotations, files, cluster_ids = read_annotations(params.annotation_folder)
+    annotations, files, cluster_ids = read_annotations(params.snapms)
 
     cluster_ids = [str(x) for x in cluster_ids]
     annotation_dict = dict(zip(cluster_ids, annotations))

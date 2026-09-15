@@ -386,7 +386,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to target network CX graph file."
     )
     p_add_snapms.add_argument(
-        "--annotation-folder", "-a", type=Path, required=True,
+        "--snapms", "-a", type=Path, required=True,
         help="Path to SNAP-MS annotation results directory containing output files."
     )
     p_add_snapms.set_defaults(func=handle_add_snapms)
