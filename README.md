@@ -34,44 +34,45 @@ Run the setup script to download required reference datasets, models, and demo f
 python setup.py
 ```
 
+-### 3. Download Supporting Files
+Run the setup script to download required reference datasets, models, and demo files (type `y` when prompted):
+```bash
+python setup.py
+```
+
 ---
 
 ## Running the Pipeline
-The pipeline uses **Snakemake** to manage execution, file validation, and logging.
 
-### 1. Navigate to the Directory
+Navigate into the `src` directory to run the CLI commands:
 
-Navigate into the snakemake directory before running any Snakemake commands:
 ```bash
-cd snakemake
+cd src
 ```
 
-### 2. Configure the Run
-Edit `snakemake/config.yaml` to specify your input `.mgf` file, output directories, model paths, and parameter sweeps (e.g., similarity types, motif numbers).
+### CLI Workflow Commands
 
-### 3. Configure tool-specific parameters
-Edit the .yaml files in `snakemake/params/tools.yaml` to specify tool-specific settings if needed.  
+1. **Run MS2LDA**
+   ```bash
+   python cli.py run-ms2lda --mgf <path_to_mgf>
+   ```
 
-### 4 Pre-Flight Dry Run
-Verify that your input files, models, parameter files, and rules resolve correctly before running:
-```bash
-snakemake -n
-```
+2. **Run Molecular Networking**
+   ```bash
+   python cli.py run-mn --mgf ../data/test_file.mgf
+   ```
 
-### 5. Execute the Pipeline
-Run the pipeline locally. Default execution options (CPU cores, logging preferences, failed-job handling) are pre-configured in `profiles/default/config.yaml`:
-```bash
-snakemake
-```
+3. **Run SNAP-MS**
+   ```bash
+   python cli.py run-snapms --graph ../results/base.cx
+   ```
 
-To override default cores or run with custom parameters on the command line:
-```bash
-snakemake --cores 8
-```
+4. **Add MS2LDA Results to Graph**
+   ```bash
+   python cli.py add-ms2lda --graph ../results/base.cx --model ../results/model.lda
+   ```
 
----
-
-## Outputs & Debugging
-
-* **Results:** Outputs (molecular networks, LDA models, motifs, SnapMS annotations, and plots) are saved in structured subdirectories within your designated results folder (`results/networks/`, `results/ms2lda/`, `results/snapms/`).
-* **Logs:** Execution logs for every rule are automatically written to `results/logs/<rule_name>/` for simple step-by-step debugging.
+5. **Add SNAP-MS Results to Graph**
+   ```bash
+   python cli.py add-snapms --graph ../results/base.cx --snapms ../results/snapms
+   ```
