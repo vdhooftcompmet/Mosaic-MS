@@ -19,6 +19,7 @@ import math
 
 
 def read_cx(file):
+    file = str(file)
     # Load into the 'Nice' wrapper
     nice_cx = ndex2.create_nice_cx_from_file(file)
     
@@ -37,6 +38,7 @@ def read_cx(file):
 
 
 def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None):
+    file_path = str(file_path)
     nice_cx = ndex2.NiceCXNetwork()
     
     # 1. Map NetworkX nodes to CX internal IDs
