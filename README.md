@@ -34,12 +34,6 @@ Run the setup script to download required reference datasets, models, and demo f
 python setup.py
 ```
 
--### 3. Download Supporting Files
-Run the setup script to download required reference datasets, models, and demo files (type `y` when prompted):
-```bash
-python setup.py
-```
-
 ---
 
 ## Running the Pipeline
@@ -54,7 +48,7 @@ cd src
 
 1. **Run MS2LDA**
    ```bash
-   python cli.py run-ms2lda --mgf <path_to_mgf>
+   python cli.py run-ms2lda --mgf ../data/test_file.mgf
    ```
 
 2. **Run Molecular Networking**
@@ -69,7 +63,7 @@ cd src
 
 4. **Add MS2LDA Results to Graph**
    ```bash
-   python cli.py add-ms2lda --graph ../results/base.cx --model ../results/model.lda
+   python cli.py add-ms2lda --graph ../results/base.cx --model ../results/model.lda 
    ```
 
 5. **Add SNAP-MS Results to Graph**
