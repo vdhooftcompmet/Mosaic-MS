@@ -47,7 +47,7 @@ def _similarity_cache(fn):
     def inner(spectra, params):
         files = {}
         for file_type in ["avg_sim", "tot_sim", "tot_sup"]:
-            files[file_type] = Path(params.cache_folder) / _make_cache_name(params.mgf, params.similarity_type, file_type, params.B)
+            files[file_type] = Path(params.cache_folder) / _make_cache_name(file_type, params)
     
         if all(f.exists() for f in files.values()):
             data = {data_type: load_npz(f).toarray() for data_type, f in files.items()}
@@ -69,25 +69,26 @@ def _similarity_cache(fn):
     return inner
 
 
-def _make_cache_name(file_path: str | Path, method_name: str, data_type: str, B: int) -> str:
+def _make_cache_name(file_type: str, params) -> str:
     hasher = hashlib.sha256()
 
-    with open(file_path, "rb") as f:
+    with open(str(params.mgf), "rb") as f:
         while chunk := f.read(65536): 
             hasher.update(chunk)
 
-    hasher.update(method_name.lower().encode("utf-8"))
-    hasher.update(data_type.lower().encode("utf-8"))
-    hasher.update(str(B).encode("utf-8"))
+    hasher.update(str(params.similarity_type).lower().encode("utf-8"))
+    hasher.update(str(file_type)             .lower().encode("utf-8"))
+    hasher.update(str(params.B)              .lower().encode("utf-8"))
+    hasher.update(str(params.seed)           .lower().encode("utf-8"))
     hexadecimal_string = hasher.hexdigest()
-    file_name = f"{method_name}-{hexadecimal_string[:20]}.npz"
+    file_name = f"{params.similarity_type}-{hexadecimal_string[:20]}.npz"
     return file_name
 
 
 def clean_mgf(path: Path | str):
     assert isinstance(path, (str, Path)), "path must be a Path object or a string"
 
-    spectra = load_from_mgf(path)
+    spectra = list(load_from_mgf(path))
     spectrum_processor = SpectrumProcessor(DEFAULT_FILTERS + CLEAN_PEAKS)
     result, _ = spectrum_processor.process_spectra(spectra, progress_bar=False)
 
