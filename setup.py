@@ -15,13 +15,16 @@ from urllib.parse import urlparse
 
 FILE_NAMES = [
     "coconut_db.jsonl",
-    "input.mgf",
+    "test_file.mgf",
     "ms2deepscore_model.pt",
     "Spec2VecModel.model",
     "Spec2VecModel.model.syn1neg.npy",
-    "Spec2VecModel.model.wv.vectors.npy"
+    "Spec2VecModel.model.wv.vectors.npy", 
+    "mn_example.cx", 
+    "snapms_example.cx", 
 ]
-WEB_ADDRESS = "https://zenodo.org/records/22230864/files/"
+
+WEB_ADDRESS = "https://zenodo.org/records/22801631/files/"
 DOWNLOAD_SUFFIX = "?download=1"
 DATA_DIR = Path("data")
 

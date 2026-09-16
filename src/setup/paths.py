@@ -39,5 +39,5 @@ CLEANED_INTERSECTION            = MOCK_DATA_FOLDER / "intersection_cleaned.mgf"
 COSINE_FILTERED_INTERSECTION    = MOCK_DATA_FOLDER / "intersection_cosine_filtered.mgf"
 INCHIKEY_FILTERED_INTERSECTION  = MOCK_DATA_FOLDER / "intersection_inchikey_filtered.mgf"
 
-ANNOTATION_STYLE_FILE           = None #SUPPORTING_FOLDER / "annotation_style.cx"
-MN_STYLE_FILE                   = None #SUPPORTING_FOLDER / "mn_style.cx"
+ANNOTATION_STYLE_FILE           = "../data/snapms_example.cx"
+MN_STYLE_FILE                   = "../data/mn_example.cx"
