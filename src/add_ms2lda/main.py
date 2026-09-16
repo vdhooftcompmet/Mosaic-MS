@@ -27,12 +27,18 @@ def main(params) -> None:
         mz = np.array([x[0] for x in spectrum_data])
         i  = np.array([x[1] for x in spectrum_data])
         metadata = {k: v for k, v in mn.nodes[node].items() if k != "peaks_json"}
-        
+        metadata = {k: v for k, v in metadata.items() if v != None}
+        metadata["retention_time"]  = metadata.get("rtinminutes")
+        metadata["retention_index"] = 0
+            
         spectrum = Spectrum(mz, i, metadata)
         spectra.append(spectrum)
         
     model = tp.LDAModel.load(str(model_path))
-    
+    topic_words = get_topic_words(model)
+    params.dataset_significant_digits = derive_significant_digits(topic_words)
+    params.dataset_acquisition_type = dataset_acquisition_type(topic_words)
+
     result = run_overlap_scores_calculation(spectra, model, params)
     _beta_matrix, _phi_matrix, _theta_matrix, overlap_scores = result
 
@@ -111,3 +117,41 @@ def run_overlap_scores_calculation(spectra: list[Spectrum],  model: tp.LDAModel,
     overlap_scores = phi_matrix * theta_matrix
 
     return beta_matrix, phi_matrix, theta_matrix, overlap_scores
+
+
+def get_topic_words(model):
+    all_words = []
+    for topic_id in range(model.k):
+        top_words = model.get_topic_words(topic_id, top_n=10)
+        for word, value in top_words:
+            all_words.append(word)
+    return all_words
+
+
+def derive_significant_digits(topic_words):
+    decimal_places = set()
+    sig_digits = set()
+    
+    for word in topic_words:
+        if '@' in word:
+            mass_str = word.split('@')[1]
+    
+            # Count decimal places (digits after '.')
+            dec_count = len(mass_str.split('.')[1]) if '.' in mass_str else 0
+            decimal_places.add(dec_count)
+    
+            # Count total significant digits (digits excluding '.' and leading zeros)
+            clean_num = mass_str.replace('.', '').lstrip('0')
+            sig_digits.add(len(clean_num))
+
+    return max(decimal_places)
+    
+
+def dataset_acquisition_type(topic_words):
+    has_losses = any(word.startswith('loss@') for word in topic_words)
+
+    if has_losses:
+        return "DDA"
+    return "DIA"
+
+    

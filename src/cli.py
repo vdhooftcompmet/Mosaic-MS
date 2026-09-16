@@ -307,14 +307,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--threshold", type=float, default=0.01,
         help="Motif metadata overlap threshold (default: 0.01)."
     )
-    p_add_ms2lda.add_argument(
-        "--dataset-acquisition-type", type=str, default="DDA",
-        help="Aquisition type determines if losses are incorporated. Use the same settings as for run-ms2lda."
-    )
-    p_add_ms2lda.add_argument(
-        "--dataset-significant-digits", type=int, default=2,
-        help="Precision for binning peak m/z values."
-    )
     p_add_ms2lda.set_defaults(func=handle_add_ms2lda)
 
     # --------------------------------------
