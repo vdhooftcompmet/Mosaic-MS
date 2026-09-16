@@ -36,6 +36,27 @@ python setup.py
 
 ---
 
+## Result preview
+
+To get an idea of the type of graphs this pipeline gives, open the recently just example files in Cytoscape. 
+
+#### 1. download cytoscape
+To download cytoscape, go to: `https://cytoscape.org/download.html`
+
+#### 2. open example files
+`../data/mn_example.cx` shows the metadata added to typical graph dervied from an MS2LDA andsnap-ns analysis
+
+`../data/snapms_example.cx` shows a the results of a SNAP-MS analysis for cluster 1 of the molecular networking example. 
+
+#### 3. download the ChemViz extension
+For the full experience, also download the ChemViz Cytoscape extension. 
+This extension visualizes chemical structures in SNAP-MS results. 
+
+1. Open Cytoscape. 
+2. Go to the top menu bar and click Apps $\rightarrow$ App Store $\rightarrow$ Show App Store (or open the App Manager).  
+3. In the search box, type chemViz2. 
+4. Select chemViz2 from the list and click the Install button.
+
 ## Running the Pipeline
 
 Navigate into the `src` directory to run the CLI commands:
