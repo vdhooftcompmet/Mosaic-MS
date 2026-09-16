@@ -26,3 +26,4 @@ pulp==2.7.0
 rich
 onnxruntime
 spec2vec>=0.9.1
+tomotopy>=0.12.7
