@@ -25,7 +25,7 @@ def main(params: Namespace) -> None:
     if not Path(params.folder).exists():
         prepare_directory(params.folder)
 
-    spectra = list(load_from_mgf(params.mgf))
+    spectra = clean_mgf(params.mgf)
     similarity, support = _similarity_cache(calculate_bootstrapping)(spectra, params)
 
     file_names = {
@@ -82,6 +82,19 @@ def _make_cache_name(file_path: str | Path, method_name: str, data_type: str, B:
     hexadecimal_string = hasher.hexdigest()
     file_name = f"{method_name}-{hexadecimal_string[:20]}.npz"
     return file_name
+
+
+def clean_mgf(path: Path | str):
+    assert isinstance(path, (str, Path)), "path must be a Path object or a string"
+
+    spectra = load_from_mgf(path)
+    spectrum_processor = SpectrumProcessor(DEFAULT_FILTERS + CLEAN_PEAKS)
+    result, _ = spectrum_processor.process_spectra(spectra, progress_bar=False)
+
+    for i, spectrum in enumerate(result):
+        spectrum.set(KEY_SPECTRUM_ID, i)
+
+    return result
         
 
 
