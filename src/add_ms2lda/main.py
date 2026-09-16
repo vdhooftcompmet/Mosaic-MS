@@ -8,6 +8,7 @@ from matchms.importing import load_from_mgf
 from ms2lda.preprocessing import spectra_to_documents
 from utils.cx import read_cx, write_cx
 from setup.paths import MN_STYLE_FILE
+import ast
 
 
 def main(params) -> None:
@@ -15,16 +16,29 @@ def main(params) -> None:
     
     assert model_path.exists(), f"Error: Model file does not exist at {model_path}"
     assert model_path.is_file(), f"Error: {model_path} is a directory, not a file!"
-    
+
+    mn = read_cx(params.graph)
+
+    spectra = []
+    for node in mn:
+        spectrum_data_str = str(mn.nodes[node]["peaks_json"])
+        spectrum_data = to_list(spectrum_data_str)
+        
+        mz = np.array([x[0] for x in spectrum_data])
+        i  = np.array([x[1] for x in spectrum_data])
+        metadata = {k: v for k, v in mn.nodes[node].items() if k != "peaks_json"}
+        
+        spectrum = Spectrum(mz, i, metadata)
+        spectra.append(spectrum)
+        
     model = tp.LDAModel.load(str(model_path))
-    spectra = [x for x in load_from_mgf(str(params.mgf))]
     
     result = run_overlap_scores_calculation(spectra, model, params)
     _beta_matrix, _phi_matrix, _theta_matrix, overlap_scores = result
 
     threshold = float(params.threshold)
 
-    mn = read_cx(params.graph)
+    
 
     assert len(mn) == overlap_scores.shape[1], f"{len(mn)} vs {overlap_scores.shape[1]}"
 
@@ -40,6 +54,10 @@ def main(params) -> None:
 
     write_cx(mn, params.graph, MN_STYLE_FILE)
 
+
+def to_list(list_str):
+    return ast.literal_eval(list_str)
+    
 
 def run_overlap_scores_calculation(spectra: list[Spectrum],  model: tp.LDAModel,  params: Namespace) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # see original/MS2LDA/Visualization/lda_dict for original function

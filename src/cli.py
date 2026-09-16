@@ -304,10 +304,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to target network CX graph file."
     )
     p_add_ms2lda.add_argument(
-        "--mgf", "-m", type=Path, required=True,
-        help="Path to cleaned input MGF file used to compute overlaps."
-    )
-    p_add_ms2lda.add_argument(
         "--threshold", type=float, default=0.01,
         help="Motif metadata overlap threshold (default: 0.01)."
     )
