@@ -25,7 +25,7 @@ In untargeted metabolomics, individual fragmentation patterns act like individua
                └──────┬───────┘
                       │
       ┌───────────────┴───────────────┐
-      ▼                               ▼
+      ▼                              ▼
 ┌───────────┐                   ┌───────────┐
 │  MS2LDA   │                   │ Molecular │
 └─────┬─────┘                   │ Networking│
@@ -36,11 +36,11 @@ In untargeted metabolomics, individual fragmentation patterns act like individua
                ┌───────────┐
                │  SNAP-MS  │ (Substructures)
                └─────┬─────┘
-                      ▼
-         ┌───────────────────────┐
-         │    Mosaic-MS Graph    │
-         │ (.CX file for Cytoscape) │
-         └───────────────────────┘
+                     ▼
+       ┌──────────────────────────┐
+       │      Mosaic-MS Graph     │
+       │ (.CX file for Cytoscape) │
+       └──────────────────────────┘
 ```
 
 ---
@@ -82,7 +82,7 @@ python setup.py
 To verify your installation using the provided test dataset, run:
 
 ```bash
-python src/cli.py run-all --mgf data/test_file.mgf --out results/demo_output
+python src/cli.py run-all --mgf data/test_file.mgf
 ```
 
 ---
