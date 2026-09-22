@@ -96,6 +96,77 @@ def handle_add_snapms(args):
     add_snapms_main(args)
 
 
+def handle_run_all(args):
+    """Executes the complete Mosaic-MS pipeline sequentially."""
+
+    # 1. Run Molecular Networking
+    print("\n--- [Step 1/5] Running Molecular Networking ---")
+    mn_args = argparse.Namespace(
+        mgf=args.mgf,
+        defaults=args.mn_defaults,
+        similarity_type=None,
+        similarity_threshold=None,
+        flash_tolerance=None,
+        binning_decimals=None,
+        max_component_size=None,
+        B=None, k=None, seed=None, n_jobs=None,
+        ms2deepscore_model_path=None,
+        spec2vec_model_path=None,
+        use_average_similarity=None,
+        cache_similarity=None,
+        base_graph_path=str(args.base_graph_path),
+        threshold_graph_path=None,
+        rescued_graph_path=None
+    )
+    handle_run_mn(mn_args)
+
+    # 2. Run MS2LDA
+    print("\n--- [Step 2/5] Running MS2LDA ---")
+    ms2lda_args = argparse.Namespace(
+        mgf=args.mgf,
+        defaults=args.ms2lda_defaults,
+        model_path=str(args.ms2lda_model_path),
+        motifs_path=None, iterations=None, nr_of_motifs=None, top_n_words=None,
+        dataset_acquisition_type=None, dataset_charge=None, dataset_significant_digits=None,
+        train_parallel=None, train_workers=None, model_rm_top=None, model_min_cf=None,
+        model_min_df=None, model_alpha=None, model_eta=None, model_seed=None,
+        conv_step_size=None, conv_window_size=None, conv_threshold=None, conv_type=None
+    )
+    handle_run_ms2lda(ms2lda_args)
+
+    # 3. Add MS2LDA Results to Graph
+    print("\n--- [Step 3/5] Adding MS2LDA Results to Graph ---")
+    add_ms2lda_args = argparse.Namespace(
+        graph=args.base_graph_path,
+        model=args.ms2lda_model_path,
+        threshold=args.ms2lda_threshold
+    )
+    handle_add_ms2lda(add_ms2lda_args)
+
+    # 4. Run SNAP-MS
+    print("\n--- [Step 4/5] Running SNAP-MS ---")
+    snapms_args = argparse.Namespace(
+        graph=str(args.base_graph_path),
+        defaults=args.snapms_defaults,
+        result_folder=str(args.snapms_result_folder),
+        reference_db=None, ppm_error=None, min_cluster_size=None,
+        max_cluster_size=None, min_annotation_size=None, cutoff=None,
+        adduct_list=None, detect_adduct=None
+    )
+    handle_run_snapms(snapms_args)
+
+    # 5. Add SNAP-MS Results to Graph
+    print("\n--- [Step 5/5] Adding SNAP-MS Results to Graph ---")
+    add_snapms_args = argparse.Namespace(
+        graph=args.base_graph_path,
+        snapms=args.snapms_result_folder
+    )
+    handle_add_snapms(add_snapms_args)
+
+    print()
+    print(" Pipeline execution completed successfully!")
+
+
 # ==========================================
 # Parser Setup
 # ==========================================
@@ -378,6 +449,47 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to SNAP-MS annotation results directory containing output files."
     )
     p_add_snapms.set_defaults(func=handle_add_snapms)
+
+    # --------------------------------------
+    # 6. run-all
+    # --------------------------------------
+    p_run_all = subparsers.add_parser(
+        "run-all",
+        help="Execute the full end-to-end Mosaic-MS pipeline sequentially."
+    )
+    p_run_all.add_argument(
+        "--mgf", "-m", type=str, required=True,
+        help="Path to input MGF spectrum file."
+    )
+    p_run_all.add_argument(
+        "--base-graph-path", type=Path, default=Path("../results/base.cx"),
+        help="Output path for intermediate and final network CX graph file (default: ../results/base.cx)."
+    )
+    p_run_all.add_argument(
+        "--ms2lda-model-path", type=Path, default=Path("../results/model.lda"),
+        help="Output path for trained MS2LDA model file (default: ../results/model.lda)."
+    )
+    p_run_all.add_argument(
+        "--snapms-result-folder", type=Path, default=Path("../results/snapms"),
+        help="Output directory for SNAP-MS intermediate results (default: ../results/snapms)."
+    )
+    p_run_all.add_argument(
+        "--mn-defaults", type=str, default=None,
+        help="Path to YAML config file for MN step."
+    )
+    p_run_all.add_argument(
+        "--ms2lda-defaults", type=str, default=None,
+        help="Path to YAML config file for MS2LDA step."
+    )
+    p_run_all.add_argument(
+        "--snapms-defaults", type=str, default=None,
+        help="Path to YAML config file for SNAP-MS step."
+    )
+    p_run_all.add_argument(
+        "--ms2lda-threshold", type=float, default=0.01,
+        help="MS2LDA motif overlap threshold (default: 0.01)."
+    )
+    p_run_all.set_defaults(func=handle_run_all)
 
     return parser
 
