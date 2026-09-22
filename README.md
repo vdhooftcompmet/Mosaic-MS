@@ -1,4 +1,4 @@
-# STRATA-MS
+# MOSIAC-MS
 
 STRATA-MS is a pipeline designed for processing and analyzing mass spectrometry data using **SNAP-MS**, **Molecular Networking**, and **MS2LDA**. Follow the instructions below to set up your environment, download necessary supporting files, and execute a workflow.
 
