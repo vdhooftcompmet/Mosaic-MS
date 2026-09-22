@@ -1,4 +1,4 @@
-name: strata-ms
+name: mosaic-ms
 channels:
   - pytorch
   - conda-forge
