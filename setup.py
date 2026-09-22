@@ -48,11 +48,11 @@ def main():
         f"detected missing setup files:\n"
         f"{missing_files_str}\n"
         f"do you want to download them from {WEB_ADDRESS}?\n"
-        f"[y/N]\n"
+        f"[Y/n]\n"
     )
-    download_allowed = response.strip().lower() in ["y", "yes"]
+    download_denied = response.strip().lower() in ["n", "no"]
 
-    if not download_allowed:
+    if download_denied:
         print("download denied")
         return 
 
