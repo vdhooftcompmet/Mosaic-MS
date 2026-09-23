@@ -1,21 +1,11 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
-import pandas as pd
-import numpy as np
 import networkx as nx
 import ndex2
 import json
 import contextlib
-
 from utils.constants import *
 from pathlib import Path
 from tqdm import tqdm
-
-import ndex2
-import math  
+import os
 
 
 def read_cx(file):

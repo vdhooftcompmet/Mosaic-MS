@@ -1,41 +1,12 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
-
 import networkx as nx 
-
 from collections import defaultdict
-from tqdm import tqdm
-from pathlib import Path
-
 from setup.paths import MN_STYLE_FILE
 from utils.constants import KEY_MN_CLUSTER_ID, KEY_ANN_MASS_DIVERSITY, KEY_IS_ANNOTATED, KEY_IS_TOP_CANDIDATE, KEY_MN_NODE_ID
 from utils.cx import write_cx, read_cx, read_annotations
 from setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
-
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
-import pandas as pd
 import numpy as np
-import networkx as nx
-
-from collections import defaultdict
-
 from utils.similarity_matrix import similarity_matrix
 from utils.constants import *
-from utils.cx import write_cx
-
-from setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
-
-from utils.cx import write_cx
-
-from utils.cx import write_cx, read_cx, read_annotations
-
 from setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
 
 

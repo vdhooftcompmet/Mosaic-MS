@@ -1,11 +1,6 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 from setup.downloads import download_from_link, ask_for_download
 from setup.databases import sdf_to_structure_db, create_databse_intersection_mgf, extract_positive_mode
-from setup.mockdata import clean_mgf, filter_by_cosine, filter_by_inchikey
+from setup.mockdata import clean_mgf, filter_by_inchikey
 from setup.paths import (
     COCONUT_DB_PATH, COCONUT_DOWNLOAD_LINK, 
     MSNLIB_DB_PATH, MSNLIB_DOWNLOAD_LINK, 

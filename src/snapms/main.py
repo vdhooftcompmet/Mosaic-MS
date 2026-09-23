@@ -1,20 +1,11 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import networkx as nx
-
 from tqdm import tqdm
-from argparse import Namespace
 from collections import defaultdict
-
 from pathlib import Path
 from utils.folders import prepare_directory
 from utils.constants import *
 from utils.cx import read_cx, write_cx
 from setup.paths import ANNOTATION_STYLE_FILE
-
 from snapms.masses import import_atlas, compute_adduct_matches, merge_duplicates
 from snapms.network import get_edges, remove_edges_with_same_value_for, remove_self_similar_vals, remove_small_subgraphs, add_cluster_numbering, add_top_candidate_annotation
 

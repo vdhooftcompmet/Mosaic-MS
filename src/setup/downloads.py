@@ -1,12 +1,5 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import requests
-import sys
 import shutil
-
 from tqdm import tqdm
 import zipfile
 from urllib.parse import urlparse

@@ -1,18 +1,8 @@
-
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import shutil
 import yaml
-
 from pathlib import Path
 from argparse import Namespace
 from datetime import datetime
-from collections import namedtuple
-
-from utils.cx import read_cx
 
 
 def load_params(path) -> Namespace:

@@ -1,19 +1,11 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import random
-
 import numpy as np
-
 from tqdm import tqdm
 from matchms.importing import load_from_mgf
 from matchms.exporting import save_as_mgf
 from matchms.filtering.default_pipelines import DEFAULT_FILTERS, CLEAN_PEAKS
 from matchms.filtering.SpectrumProcessor import SpectrumProcessor
 from matchms.similarity.FlashSimilarity import FlashSimilarity
-
 from rdkit import Chem
 
 

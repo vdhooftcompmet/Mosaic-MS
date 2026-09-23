@@ -1,12 +1,5 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
-
 import io
 import re
-
 from typing import Any
 from rdkit import Chem
 from rdkit.Chem import Draw

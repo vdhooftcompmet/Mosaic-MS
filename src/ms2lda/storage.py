@@ -1,10 +1,4 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import tomotopy as tp
-
 from pathlib import Path
 from matchms import Spectrum
 from matchms.exporting import save_as_mgf

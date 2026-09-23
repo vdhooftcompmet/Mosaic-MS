@@ -1,17 +1,14 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
-
 from scipy.sparse import save_npz, load_npz, csr_matrix
 from mn.bootstrap import *
 from mn.network import *
 from utils.folders import prepare_directory
 from utils.constants import *
-from utils.cx import write_cx
 from setup.paths import MN_STYLE_FILE
 import hashlib
+from matchms.importing import load_from_mgf
+from matchms import SpectrumProcessor
+from utils.cx import write_cx
+from matchms.filtering.default_pipelines import DEFAULT_FILTERS, CLEAN_PEAKS
 
 
 GRAPH_FUNCTIONS = {

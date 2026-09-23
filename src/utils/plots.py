@@ -1,8 +1,3 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,7 +5,6 @@ plt.rcParams['svg.fonttype'] = 'none'
 plt.rcParams['figure.autolayout'] = False
 
 import matplotlib.patheffects as pe
-
 from matplotlib.axes import Axes
 from typing import Any
 from matchms import Spectrum, Fragments

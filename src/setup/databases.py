@@ -1,18 +1,10 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import json
-import sys
-
 from tqdm import tqdm
 from matchms.importing import load_from_mgf
 from matchms.exporting import save_as_mgf
 from matchms.filtering import derive_ionmode
 from rdkit import Chem
 from rdkit.Chem import Descriptors
-
 from utils.constants import *
 
 

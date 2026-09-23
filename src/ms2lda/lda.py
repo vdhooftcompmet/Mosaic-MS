@@ -1,8 +1,3 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import numpy as np
 import tomotopy as tp
 from tqdm import tqdm
@@ -12,6 +7,7 @@ from argparse import Namespace
 from collections import namedtuple
 import logging
 from unittest.mock import patch
+
 
 ConvergenceResult = namedtuple("convergence_result", ["perplexity_history", "log_likelihood_history", "entropy_history_doc", "entropy_history_topic"])
 

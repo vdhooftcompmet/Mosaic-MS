@@ -1,14 +1,7 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import pandas as pd
 import networkx as nx
 from pathlib import Path
-
 from collections import defaultdict
-
 from argparse import Namespace
 from utils.constants import *
 

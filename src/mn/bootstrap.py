@@ -1,13 +1,7 @@
-import sys
-import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
-
 import gensim
 import numpy as np
-
 from joblib import parallel_backend
-from typing import Any, Generator, List
+from typing import Any, List
 from argparse import Namespace
 from tqdm import tqdm
 from matchms import Spectrum
@@ -15,12 +9,7 @@ from pathlib import Path
 from ms2deepscore.models import load_model
 from ms2deepscore import MS2DeepScore
 from spec2vec import Spec2Vec
-
-from matchms.importing import load_from_mgf
 from matchms.similarity.FlashSimilarity import FlashSimilarity
-from matchms.filtering.default_pipelines import DEFAULT_FILTERS, CLEAN_PEAKS, REQUIRE_COMPLETE_METADATA
-from matchms.filtering.SpectrumProcessor import SpectrumProcessor
-
 from utils.context import suppress_output
 from utils.constants import *
 
