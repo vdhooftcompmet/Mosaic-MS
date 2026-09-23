@@ -34,7 +34,7 @@ motifs + model │            graph │            │  SNAP-MS  │
 (.mgf + .lda)  │       (.cx file) │            └─────┬─────┘
                │                  │                  │ snap-ms folder
                │ ┌─────────────┐  │  ┌─────────────┐ │
-               └─┤ Integration ├─▶│◀─┤ Integration ├─┘
+               └─┤ Integration ├─>│<─┤ Integration ├─┘
                  └─────────────┘  │  └─────────────┘
                                   │
                                   ▼
