@@ -27,7 +27,7 @@ Just as individual tiles come together to form a mosaic, **Mosaic-MS** acts as t
                └──────┬───────┘
                       │
       ┌───────────────┴───────────────┐
-      ▼                              ▼
+      ▼                               ▼
 ┌───────────┐                   ┌───────────┐
 │  MS2LDA   │                   │ Molecular │
 └─────┬─────┘                   │ Networking│
