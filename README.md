@@ -20,29 +20,34 @@ Just as individual tiles come together to form a mosaic, **Mosaic-MS** acts as t
 ---
 
 ## Workflow Overview
-
 ```
-               ┌──────────────┐
-               │  Input MGF   │
-               └──────┬───────┘
-                      │
-      ┌───────────────┴───────────────┐
-      ▼                               ▼
-┌───────────┐                   ┌───────────┐
-│  MS2LDA   │                   │ Molecular │
-└─────┬─────┘                   │ Networking│
-      │                         └─────┬─────┘
-      │ (Mass2Motifs)                 │
-      └───────────────┬───────────────┘
-                      ▼
-               ┌───────────┐
-               │  SNAP-MS  │ (Substructures)
-               └─────┬─────┘
-                     ▼
-       ┌──────────────────────────┐
-       │      Mosaic-MS Graph     │
-       │ (.CX file for Cytoscape) │
-       └──────────────────────────┘
+                     ┌───────────┐
+                     │ Input MGF │
+                     └─────┬─────┘
+                           │ .mgf file
+             ┌─────────────┴─────────────┐
+             ▼                           ▼
+       ┌───────────┐               ┌───────────┐
+       │  MS2LDA   │               │ Molecular │
+       │           │               │ Networking│──────┐
+       └─────┬─────┘               └─────┬─────┘      │
+             │                           │            │
+             │ motifs + model            │ graph      │
+             │ (.mgf + .lda)             │ (.cx file) │
+             │                           ▼            │
+             │                     ┌───────────┐      │
+             │                     │  SNAP-MS  │      │
+             │                     └─────┬─────┘      │
+             │                           │            │
+             └─────────────────┬─────────┴────────────┘
+                               │
+                               ▼
+                       ┌───────────────┐
+                       │  Integration  │
+                       └───────┬───────┘
+                               │
+                               ▼
+                       Integrated Graph                    
 ```
 
 ---
