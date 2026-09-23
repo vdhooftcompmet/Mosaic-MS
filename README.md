@@ -8,7 +8,7 @@
 
 ## Concept & Name
 
-**Mosaic-MS** stands for **M**otif Mining & **S**NAP-MS **A**nnotation **I**ntegration for **C**hemical discoveries with **MS**.
+**Mosaic-MS** stands for **MO**_tif mining_ & **S**_NAP-MS_ **A**_nnotation_ **I**_ntegration for_ **C**_hemical discoveries with_ **MS**.
 
 The name reflects the seamless integration of pattern mining and substructure-to-structure annotation approaches in untargeted metabolomics:
 
@@ -21,33 +21,24 @@ Just as individual tiles come together to form a mosaic, **Mosaic-MS** acts as t
 
 ## Workflow Overview
 ```
-                     ┌───────────┐
-                     │ Input MGF │
-                     └─────┬─────┘
-                           │ .mgf file
-             ┌─────────────┴─────────────┐
-             ▼                           ▼
-       ┌───────────┐               ┌───────────┐
-       │  MS2LDA   │               │ Molecular │
-       │           │               │ Networking│──────┐
-       └─────┬─────┘               └─────┬─────┘      │
-             │                           │            │
-             │ motifs + model            │ graph      │
-             │ (.mgf + .lda)             │ (.cx file) │
-             │                           ▼            │
-             │                     ┌───────────┐      │
-             │                     │  SNAP-MS  │      │
-             │                     └─────┬─────┘      │
-             │                           │            │
-             └─────────────────┬─────────┴────────────┘
-                               │
-                               ▼
-                       ┌───────────────┐
-                       │  Integration  │
-                       └───────┬───────┘
-                               │
-                               ▼
-                       Integrated Graph                    
+                   Input MGF 
+                       │ .mgf file
+               ┌───────┴───────┐
+               ▼               ▼
+         ┌───────────┐      ┌───────────┐
+         │  MS2LDA   │      │ Molecular │
+         │           │      │ Networking│────────────┐
+         └─────┬─────┘      └─────┬─────┘            ▼
+               │                  │            ┌───────────┐
+motifs + model │            graph │            │  SNAP-MS  │
+(.mgf + .lda)  │       (.cx file) │            └─────┬─────┘
+               │                  │                  │ snap-ms folder
+               │ ┌─────────────┐  │  ┌─────────────┐ │
+               └─┤ Integration ├─▶│◀─┤ Integration ├─┘
+                 └─────────────┘  │  └─────────────┘
+                                  │
+                                  ▼
+                           Integrated Graph                  
 ```
 
 ---
