@@ -8,12 +8,14 @@
 
 ## Concept & Name
 
-In untargeted metabolomics, individual fragmentation patterns act like individual tiles in a complex mosaic. No single computational tool captures the full structural landscape of a complex sample:
+**Mosaic-MS** stands for **M**otif Mining & **S**NAP-MS **A**nnotation **I**ntegration for **C**hemical discoveries with **MS**.
 
-* **SNAP-MS** maps known chemical substructures onto molecular networks using structural similarity.
-* **MS2LDA** extracts latent fragmentation patterns (**Mass2Motifs**) representing co-occurring substructures across untargeted datasets.
+The name reflects the seamless integration of pattern mining and substructure-to-structure annotation approaches in untargeted metabolomics:
 
-**Mosaic-MS** (*Motif & Substructure Annotation Integration Framework*) acts as the grout—assembling these distinct "tiles" (motifs, network topology, and substructures) into a single, highly context-rich chemical network. The resulting combined network enables deeper structural insights and streamlined chemical prioritization in Cytoscape.
+* **Pattern Mining (MS2LDA):** Extracts latent fragmentation patterns (**Mass2Motifs**) representing co-occurring fragment/neutral loss motifs across untargeted datasets.
+* **Substructure Mapping (SNAP-MS):** Maps known chemical substructures onto molecular networks using structural similarity and network topology.
+
+Just as individual tiles come together to form a mosaic, **Mosaic-MS** acts as the unifying framework—assembling motif mining, network topology, and substructure annotations into a single, context-rich chemical network. This integrated approach enables deeper structural insights and streamlined chemical prioritization in Cytoscape.
 
 ---
 
