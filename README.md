@@ -2,7 +2,7 @@
 
 > **Integrated Substructure & Motif Mapping for Untargeted Metabolomics**
 
-**Mosaic-MS** is a bioinformatic pipeline that integrates **SNAP-MS** (network-guided substructure annotation) and **MS2LDA** (unsupervised Mass Motif discovery) with **Molecular Networking** into a unified structural annotation framework for mass spectrometry data.
+**Mosaic-MS** is a bioinformatic pipeline that integrates **SNAP-MS** (network-guided structural annotation) and **MS2LDA** (unsupervised Mass Motif discovery) with **Molecular Networking** into a unified structural annotation framework for mass spectrometry data.
 
 ---
 
@@ -13,7 +13,7 @@
 The name reflects the seamless integration of pattern mining and substructure-to-structure annotation approaches in untargeted metabolomics:
 
 * **Pattern Mining (MS2LDA):** Extracts latent fragmentation patterns (**Mass2Motifs**) representing co-occurring fragment/neutral loss motifs across untargeted datasets.
-* **Substructure Mapping (SNAP-MS):** Maps known chemical substructures onto molecular networks using structural similarity and network topology.
+* **Structural Mapping (SNAP-MS):** Maps known compound families onto molecular networks using structural similarity and network topology.
 
 Just as individual tiles come together to form a mosaic, **Mosaic-MS** acts as the unifying framework—assembling motif mining, network topology, and substructure annotations into a single, context-rich chemical network. This integrated approach enables deeper structural insights and streamlined chemical prioritization in Cytoscape.
 
