@@ -15,11 +15,7 @@ def main(config: SNAPMSConfig):
 
     file = Path(config.graph)
 
-    try:
-        mn = read_cx(str(file))
-    except (ValueError, OSError, FileExistsError, FileNotFoundError) as e:
-        print(f"WARNING: failed to read file {file}; error: {e}")
-        return
+    mn = read_cx(str(file))
 
     annotation_folder = Path(config.result_folder)
     if not Path(annotation_folder).exists():
