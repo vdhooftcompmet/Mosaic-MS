@@ -134,3 +134,13 @@ cd src
    ```bash
    python cli.py add-snapms --graph ../results/base.cx --snapms ../results/snapms
    ```
+
+## References
+
+
+_Morehouse, N.J., Clark, T.N., McMann, E.J. et al. Annotation of natural product compound families using molecular networking topology and structural similarity fingerprinting. Nat Commun 14, 308 (2023). https://doi.org/10.1038/s41467-022-35734-z_
+
+_Torres Ortega, L.R., Dietrich, J., Wandy, J. et al. Large-scale discovery and annotation of substructure patterns in mass spectrometry profiles. Nat Commun 17, 8350 (2026). https://doi.org/10.1038/s41467-026-75038-0_
+
+_Esteban Charria-Girón, Laura Rosina Torres-Ortega, Joelle Mergola Greef, Yasmina Marin Felix, Nelson H. Caicedo, Frank Surup, Marnix H. Medema, Justin J.J. van der Hooft
+bioRxiv 2026.02.03.703446; doi: https://doi.org/10.64898/2026.02.03.703446_
