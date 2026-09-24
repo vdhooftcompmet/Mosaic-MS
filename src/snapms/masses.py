@@ -83,8 +83,6 @@ def derive_neutral_mass(precursor_mz, adduct):
             return (precursor_mz * 2) - (Na*2)
         case "[M+Ca]2+":
             return (precursor_mz * 2) - Ca
-        case "[M+CH3OH+H]+":
-            return precursor_mz - (C + H*3 + O + H) - H
         case "[M+2Na-H]+":
             return precursor_mz - (Na*2) - H
         case "[2M+NH3+H]+":
