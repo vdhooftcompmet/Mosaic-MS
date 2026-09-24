@@ -28,6 +28,6 @@ KEY_SMILES                      = "smiles"
 
 
 ADDUCT_ALIASES = [
-    "adduct", 
+    "adduct",
     "ion"
 ]

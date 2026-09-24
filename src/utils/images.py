@@ -13,13 +13,13 @@ def text_to_image(text: str, scale=1.6):
 
     width = int(max(120, max_line_len * 6.2) * scale)
     height = int(max(120, len(lines) * 13) * scale)
-    
-    font_size = int(8 * scale) 
-    
+
+    font_size = int(8 * scale)
+
     text_spans = ""
     for line in lines:
         text_spans += f'<tspan x="10" dy="1.05em">{line}</tspan>'
-    
+
     svg = \
     f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
     <rect width="100%" height="100%" fill="white"/>
@@ -40,7 +40,7 @@ def smiles_to_image(smiles: str | None, scale: float) -> str | None:
     d2d.drawOptions().legendFontSize = 40
     d2d.DrawMolecule(mol)
     d2d.FinishDrawing()
-    
+
     return d2d.GetDrawingText()
 
 
@@ -53,7 +53,7 @@ def ax_to_image(ax: Axes) -> str:
 def make_vector_grid(columns: list, bg_color: str = "white") -> str:
     if not columns:
         return f'<svg xmlns="http://www.w3.org/2000/svg" fill="{bg_color}"></svg>'
-    
+
     if isinstance(columns, str):
         columns = [[columns]]
 
@@ -62,7 +62,7 @@ def make_vector_grid(columns: list, bg_color: str = "white") -> str:
 
     nr_of_columns = len(columns)
     nr_of_rows = len(columns[0])
-    
+
     svg_elements = []
     for column in columns:
         for item in column:
@@ -97,17 +97,17 @@ def make_vector_grid(columns: list, bg_color: str = "white") -> str:
                 continue
 
             w, h = get_dims(svg_str)
-            
+
             padded_w = w + 10
             padded_h = h + 10
 
             cell_x = x_offset + (max_widths[c] - padded_w) // 2
             cell_y = y_offset + (max_heights[r] - padded_h) // 2
-            
+
             clean_content = re.sub(r'<\?xml[^>]*\?>', '', svg_str)
             clean_content = re.sub(r'<!DOCTYPE[^>]*>', '', clean_content, flags=re.IGNORECASE)
             clean_content = re.sub(r'<svg[^>]*>', strip_fixed_dims, clean_content, count=1)
-            
+
             grid_svg.append(f'<svg x="{cell_x}" y="{cell_y}" width="{padded_w}" height="{padded_h}" style="overflow: visible;">')
             grid_svg.append(clean_content)
             grid_svg.append('</svg>')
@@ -129,9 +129,9 @@ def strip_fixed_dims(match):
 def get_dims(svg_str):
     if svg_str is None:
         return 0, 0
-    
+
     viewbox_match = re.search(r'viewBox=["\']\s*0\s+0\s+([\d\.]+)\s+([\d\.]+)["\']', svg_str)
-    
+
     if viewbox_match:
         w_val = int(float(viewbox_match.group(1)))
         h_val = int(float(viewbox_match.group(2)))
@@ -142,28 +142,28 @@ def get_dims(svg_str):
 
     if w_match and h_match:
         return int(float(w_match.group(1))), int(float(h_match.group(1)))
-    
+
     return 300, 300
 
 
 def to_svg_string(img: Any) -> str | None:
     if img is None:
         return None
-    
+
     if isinstance(img, str):
         clean_str = img.strip()
         if clean_str.lower().startswith("<svg") or "<svg" in clean_str:
             return clean_str
         return img
-    
-    if hasattr(img, "savefig"): 
+
+    if hasattr(img, "savefig"):
         buf = io.StringIO()
         img.savefig(buf, format="svg")
         return buf.getvalue()
-    
-    if hasattr(img, "extract"):  
+
+    if hasattr(img, "extract"):
         return str(img)
-        
+
     raise TypeError(f"Raster types like arrays/PIL images cannot be implicitly converted to SVG: {type(img)}")
 
 

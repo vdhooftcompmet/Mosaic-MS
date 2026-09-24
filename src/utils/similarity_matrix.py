@@ -74,7 +74,7 @@ def fp_dice_similarity(fingerprints1, fingerprints2) -> np.ndarray:
 
 def smiles_to_fingerprints(smiles: list[str], selected_fp_type: str) -> list[ExplicitBitVect]:
     match selected_fp_type.lower():
-        case "maccs":       
+        case "maccs":
             return [smile_to_maccs_fp(s) for s in smiles]
         case "morgan":
             return [smile_to_morgan_fp(s) for s in smiles]
@@ -82,11 +82,11 @@ def smiles_to_fingerprints(smiles: list[str], selected_fp_type: str) -> list[Exp
             return [smile_to_rdk_fp(s) for s in smiles]
         case _:
             raise ValueError(f"unknown option {selected_fp_type}")
-        
+
 
 def get_matrix(fingerprints1, fingerprints2, selected_matrix_type: str):
     match selected_matrix_type.lower():
-        case "dice":       
+        case "dice":
             return fp_dice_similarity(fingerprints1, fingerprints2)
         case "tanimoto":
             return fp_tanimoto_similarity(fingerprints1, fingerprints2)
