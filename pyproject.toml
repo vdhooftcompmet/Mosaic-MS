@@ -1,4 +1,30 @@
-# Add to pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mosaic-ms"
+version = "0.1.0"
+description = "CLI tool and pipeline for mass spectrometry network analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "networkx",
+    "numpy",
+    "matchms",
+    "tomotopy",
+    "ms2deepscore",
+    "spec2vec",
+    "gensim",
+    "joblib",
+    "tqdm",
+    "scipy",
+    "pyyaml"
+]
+
+[project.scripts]
+mosaic-ms = "cli:main"
+
 [tool.ruff]
 line-length = 88
 target-version = "py310"
