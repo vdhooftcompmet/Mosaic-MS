@@ -407,11 +407,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to input MGF spectrum file."
     )
     p_run_all.add_argument(
-        "--base-graph-path", type=str, default=str(MODULE_DIR / "results" / "base.cx"),
+        "--base-graph-path", type=str, default=str(MODULE_DIR.parent / "results" / "base.cx"),
         help="Output path for intermediate and final network CX graph file (default: ../results/base.cx)."
     )
     p_run_all.add_argument(
-        "--ms2lda-model-path", type=str, default=str(MODULE_DIR / "results" / "model.lda"),
+        "--ms2lda-model-path", type=str, default=str(MODULE_DIR.parent / "results" / "model.lda"),
         help="Output path for trained MS2LDA model file (default: ../results/model.lda)."
     )
     p_run_all.add_argument(
