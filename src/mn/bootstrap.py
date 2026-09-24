@@ -2,7 +2,6 @@ import gensim
 import numpy as np
 from joblib import parallel_backend
 from typing import Any, List
-from argparse import Namespace
 from tqdm import tqdm
 from matchms import Spectrum
 from pathlib import Path
@@ -12,21 +11,21 @@ from spec2vec import Spec2Vec
 from matchms.similarity.FlashSimilarity import FlashSimilarity
 from utils.configs import MNConfig
 from utils.context import suppress_output
-from utils.constants import *
+
 
 def run_bootstrap(
-        spectra: list[Spectrum], 
-        config: MNConfig, 
-        ms2deepscore_model_path=None, 
-        spec2vec_model_path=None, 
+        spectra: list[Spectrum],
+        config: MNConfig,
+        ms2deepscore_model_path=None,
+        spec2vec_model_path=None,
 ):
     average_similarity, support = calculate_bootstrapping(spectra, config.similarity_type, config, ms2deepscore_model_path, spec2vec_model_path)
     return average_similarity, support
 
 
 def plain_similarity(
-        spectra: list[Spectrum], 
-        config: MNConfig | None = None, 
+        spectra: list[Spectrum],
+        config: MNConfig | None = None,
 ):
     similarity_metric = get_similarity(config.similarity_type, config.flash_tolerance, config)
     with suppress_output():
@@ -36,11 +35,11 @@ def plain_similarity(
 
 
 def calculate_bootstrapping(
-        spectra: list[Spectrum], 
-        config: MNConfig, 
+        spectra: list[Spectrum],
+        config: MNConfig,
 ) -> tuple[np.ndarray, np.ndarray]:
-    
-    
+
+
     bins = global_bins(spectra, config.binning_decimals)
     binned_spectra = bin_spectra(spectra, config.binning_decimals)
 
@@ -65,7 +64,7 @@ def calculate_bootstrapping(
 
         total_pair_similarities += similarity_matrix
         total_edge_support      += top_k_nearest_neighbours_binary
-        
+
 
     mean_similarities = total_pair_similarities / config.B
 
@@ -74,12 +73,12 @@ def calculate_bootstrapping(
     return mean_similarities, mean_edge_support
 
 
-def global_bins(spectra: List[Spectrum], decimals: int) -> np.ndarray[float]:
+def global_bins(spectra: list[Spectrum], decimals: int) -> np.ndarray[float]:
     all_binned_mz = []
 
     for spec in spectra:
         rounded_mz_values = np.round(spec.peaks.mz, decimals)
-        
+
         for mz in rounded_mz_values:
             all_binned_mz.append(mz)
 

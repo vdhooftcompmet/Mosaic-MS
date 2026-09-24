@@ -3,7 +3,6 @@ from tqdm import tqdm
 from collections import defaultdict
 from pathlib import Path
 from utils.folders import prepare_directory
-from utils.constants import *
 from utils.cx import read_cx, write_cx
 from setup.paths import ANNOTATION_STYLE_FILE
 from snapms.masses import import_atlas, compute_adduct_matches, merge_duplicates
@@ -28,7 +27,7 @@ def main(config: SNAPMSConfig):
     
     clusters: dict[int, list[int]] = defaultdict(list)
     for node in mn:
-        mn_cluster_id = mn.nodes[node][KEY_MN_CLUSTER_ID]
+        mn_cluster_id = mn.nodes[node]["mn_cluster_id"]
         clusters[mn_cluster_id].append(node)
 
     for mn_cluster_id, nodes in tqdm(clusters.items()):
@@ -42,7 +41,7 @@ def main(config: SNAPMSConfig):
 
         edges = get_edges(matches, cutoff=config.cutoff)
         edges = remove_self_similar_vals(edges)  # makes sure nodes aren't connected to themselves
-        edges = remove_edges_with_same_value_for(edges, matches, KEY_MN_NODE_ID)  # snapms logic dictates compounds from the same origin node cannot connect to each other
+        edges = remove_edges_with_same_value_for(edges, matches, "mn_node_id")  # snapms logic dictates compounds from the same origin node cannot connect to each other
 
         graph  = nx.Graph()
         graph.add_nodes_from((i, match) for i, match in enumerate(matches))
@@ -55,7 +54,7 @@ def main(config: SNAPMSConfig):
 
         add_cluster_numbering(graph)
         add_top_candidate_annotation(graph)
-        nx.set_node_attributes(graph, mn_cluster_id, KEY_MN_CLUSTER_ID)
+        nx.set_node_attributes(graph, mn_cluster_id, "mn_cluster_id")
 
         save_path = annotation_folder / f"graph-{mn_cluster_id}.cx"
         write_cx(graph, save_path, ANNOTATION_STYLE_FILE)

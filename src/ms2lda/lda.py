@@ -3,7 +3,6 @@ import tomotopy as tp
 from tqdm import tqdm
 from matchms import Spectrum
 import warnings
-from argparse import Namespace
 from collections import namedtuple
 import logging
 from unittest.mock import patch

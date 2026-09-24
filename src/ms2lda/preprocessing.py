@@ -1,7 +1,6 @@
 from typing import Generator
 import matchms.filtering as msfilters
 from matchms import Spectrum
-from argparse import Namespace
 from utils.configs import MS2LDAConfig
 
 

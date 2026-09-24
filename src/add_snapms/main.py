@@ -1,12 +1,6 @@
 import networkx as nx 
 from collections import defaultdict
-from setup.paths import MN_STYLE_FILE
-from utils.constants import KEY_MN_CLUSTER_ID, KEY_ANN_MASS_DIVERSITY, KEY_IS_ANNOTATED, KEY_IS_TOP_CANDIDATE, KEY_MN_NODE_ID
 from utils.cx import write_cx, read_cx, read_annotations
-from setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
-import numpy as np
-from utils.similarity_matrix import similarity_matrix
-from utils.constants import *
 from setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
 
 
@@ -28,7 +22,7 @@ def add_snapms_data(mn: nx.Graph, annotations: dict) -> None:
     clusters = defaultdict(set)
 
     for node in mn:
-        cluster = str( mn.nodes[node][KEY_MN_CLUSTER_ID] )
+        cluster = str( mn.nodes[node]["mn_cluster_id"] )
         clusters[cluster].add(node)
 
     for cluster, nodes in clusters.items():
@@ -36,19 +30,19 @@ def add_snapms_data(mn: nx.Graph, annotations: dict) -> None:
             annotation = annotations.get(cluster, [])
 
             if len(annotation) == 0:
-                mn.nodes[node][KEY_ANN_MASS_DIVERSITY] = 0
+                mn.nodes[node]["ann_mass_diversity"] = 0
                 continue
 
-            max_diversity = max([annotation.nodes[n][KEY_ANN_MASS_DIVERSITY] for n in annotation])
-            mn.nodes[node][KEY_ANN_MASS_DIVERSITY] = max_diversity
+            max_diversity = max([annotation.nodes[n]["ann_mass_diversity"] for n in annotation])
+            mn.nodes[node]["ann_mass_diversity"] = max_diversity
 
 
     for node in mn:
-        mn.nodes[node][KEY_IS_ANNOTATED] = False
+        mn.nodes[node]["is_annotated"] = False
 
     for cluster_id, graph in annotations.items():
-        is_top_candidate = any([graph.nodes[n][KEY_IS_TOP_CANDIDATE] for n in graph])
+        is_top_candidate = any([graph.nodes[n]["is_top_candidate"] for n in graph])
 
         for node in clusters[cluster_id]:
-            mn.nodes[node][KEY_IS_ANNOTATED] = is_top_candidate
+            mn.nodes[node]["is_annotated"] = is_top_candidate
 

@@ -1,6 +1,5 @@
 import numpy as np
 import networkx as nx
-from argparse import Namespace
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 from utils.configs import SNAPMSConfig

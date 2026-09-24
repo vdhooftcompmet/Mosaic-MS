@@ -5,7 +5,6 @@ from matchms.exporting import save_as_mgf
 from matchms.filtering import derive_ionmode
 from rdkit import Chem
 from rdkit.Chem import Descriptors
-from utils.constants import *
 
 
 def extract_positive_mode(input_file, output_file):
@@ -13,7 +12,7 @@ def extract_positive_mode(input_file, output_file):
 
     result = []
     for spectrum in tqdm(spectra):
-        spectrum = derive_ionmode(spectrum) 
+        spectrum = derive_ionmode(spectrum)
         if spectrum.get("ionmode") == "positive":
             result.append(spectrum)
 
@@ -29,20 +28,20 @@ def create_databse_intersection_mgf(spectral_database_mgf, strucuture_database_j
     structure_db_inchi = get_structure_db_inchikeys(strucuture_database_jsonl)
 
     spectral_db = set_spectral_db_inchikeys(spectral_database_mgf)
-    result = [s for s in tqdm(spectral_db) if s.get(KEY_INCHI_KEY) in structure_db_inchi]
+    result = [s for s in tqdm(spectral_db) if s.get("inchi_key") in structure_db_inchi]
 
     save_as_mgf(result, str(output_file), file_mode="w")
 
     if not add_missing:
         return
-    
+
     save_as_mgf(spectral_db, str(spectral_database_mgf), file_mode="w")
 
 
 def sdf_to_structure_db(input_sdf, output_jsonl):
     suppl = Chem.SDMolSupplier( str(input_sdf) )
     seen = set()
-    
+
     with open( str(output_jsonl), "w", encoding="utf-8") as f:
         for mol in tqdm(suppl):
 
@@ -52,14 +51,14 @@ def sdf_to_structure_db(input_sdf, output_jsonl):
             Chem.RemoveStereochemistry(mol)
             inchi_key = Chem.MolToInchiKey(mol)
 
-            if inchi_key in seen: 
+            if inchi_key in seen:
                 continue
 
             seen.add(inchi_key)
             record = {
-                KEY_SMILES: Chem.MolToSmiles(mol), 
-                KEY_NEUTRAL_MASS: Descriptors.ExactMolWt(mol), 
-                KEY_INCHI_KEY: inchi_key
+                "smiles": Chem.MolToSmiles(mol),
+                "neutral_mass": Descriptors.ExactMolWt(mol),
+                "inchikey": inchi_key
             }
             f.write(json.dumps(record) + "\n")
 
@@ -68,10 +67,10 @@ def get_structure_db_inchikeys(strucuture_database_jsonl):
     result = set()
 
     for line in tqdm(read_structural_db(strucuture_database_jsonl)):
-        inchi_key = line.get(KEY_INCHI_KEY)
+        inchi_key = line.get("inchikey")
 
         if not inchi_key:
-            inchi_key = smiles_to_inchikey(line.get(KEY_SMILES))
+            inchi_key = smiles_to_inchikey(line.get("smiles"))
 
         if not inchi_key:
             continue
@@ -98,16 +97,16 @@ def set_spectral_db_inchikeys(spectral_database_mgf):
     spectra = load_from_mgf( str(spectral_database_mgf) )
 
     for spectrum in tqdm(spectra):
-        inchi_key = spectrum.get(KEY_INCHI_KEY)
+        inchi_key = spectrum.get("inchikey")
 
         if not inchi_key:
-            smiles = spectrum.get(KEY_SMILES)
+            smiles = spectrum.get("smiles")
             inchi_key = smiles_to_inchikey(smiles)
 
         if not inchi_key:
             continue
 
-        spectrum.set(KEY_INCHI_KEY, inchi_key)
+        spectrum.set("inchikey", inchi_key)
 
         result.append(spectrum)
     return result
@@ -119,13 +118,13 @@ def chache_smiles(fn):
         if smiles not in cache:
            cache[smiles] = fn(smiles)
         return cache[smiles]
-        
+
     return inner
 
 
 @chache_smiles
 def smiles_to_inchikey(smiles):
-    if not smiles: 
+    if not smiles:
         return None
 
     mol = Chem.MolFromSmiles(smiles)

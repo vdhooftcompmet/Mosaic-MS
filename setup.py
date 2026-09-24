@@ -1,7 +1,6 @@
 import os
 import requests
 from pathlib import Path
-import time
 from rich.progress import (
     Progress,
     BarColumn,
@@ -19,9 +18,9 @@ FILE_NAMES = [
     "ms2deepscore_model.pt",
     "Spec2VecModel.model",
     "Spec2VecModel.model.syn1neg.npy",
-    "Spec2VecModel.model.wv.vectors.npy", 
-    "mn_example.cx", 
-    "snapms_example.cx", 
+    "Spec2VecModel.model.wv.vectors.npy",
+    "mn_example.cx",
+    "snapms_example.cx",
 ]
 
 WEB_ADDRESS = "https://zenodo.org/records/22801631/files/"
@@ -37,7 +36,7 @@ def main():
             continue
 
         missing_files.append(file_name)
-        
+
     if not missing_files:
         print("all required files found: setup complete!")
         return
@@ -54,7 +53,7 @@ def main():
 
     if download_denied:
         print("download denied")
-        return 
+        return
 
     print("dowloading files...")
 

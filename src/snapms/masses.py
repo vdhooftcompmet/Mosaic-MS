@@ -2,8 +2,6 @@ import pandas as pd
 import networkx as nx
 from pathlib import Path
 from collections import defaultdict
-from argparse import Namespace
-from utils.constants import *
 from utils.configs import SNAPMSConfig
 
 
@@ -109,6 +107,9 @@ def derive_neutral_mass(precursor_mz, adduct):
     raise ValueError("Adduct not recognized")
 
 
+ADDUCT_ALIASES = ["adduct", "ion"]
+
+
 def get_adducts(mn, node, config: SNAPMSConfig):
     if not config.detect_adduct:
         return config.adduct_list
@@ -133,7 +134,7 @@ def compute_adduct_matches(mn, nodes: dict, config: SNAPMSConfig, db_df: pd.Data
         for adduct in get_adducts(mn, node, config):
 
             try:
-                precursor_mass = float(mn.nodes[node][KEY_PRECURSOR_MZ])
+                precursor_mass = float(mn.nodes[node]["precursor_mz"])
             except KeyError:
                 print(f"WARNING: precursor mass not found {mn.nodes[node] = }, ignoring this mass...")
                 continue
@@ -159,8 +160,8 @@ def compute_adduct_matches(mn, nodes: dict, config: SNAPMSConfig, db_df: pd.Data
 
             db_matches = db_matches[["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]]
 
-            db_matches[KEY_MN_NODE_ID]      = node
-            db_matches[KEY_ADDUCT]          = adduct
+            db_matches["mn_node_id"]      = node
+            db_matches["adduct"]          = adduct
             db_matches["motifs"]            = motifs
 
             result += list(db_matches.to_dict(orient="records"))
@@ -174,18 +175,18 @@ def merge_duplicates(matches: list[dict]):
     parent_nodes = set()
 
     for match in matches:
-        smiles = match[KEY_SMILES]
+        smiles = match["smiles"]
         duplicates[smiles].append(match)
 
-        parent_node = match[KEY_MN_NODE_ID]
+        parent_node = match["mn_node_id"]
         parent_nodes.add(parent_node)
 
     result = []
     for smiles, duplicate_matches in duplicates.items():
         m = duplicate_matches[0]
 
-        smiles_parent_nodes = [d[KEY_MN_NODE_ID] for d in duplicate_matches]
-        m[KEY_MN_NODE_ID] = ";".join({str(n) for n in smiles_parent_nodes})
+        smiles_parent_nodes = [d["mn_node_id"] for d in duplicate_matches]
+        m["mn_node_id"] = ";".join({str(n) for n in smiles_parent_nodes})
 
         shared_motifs = set()
         for d in duplicate_matches:
