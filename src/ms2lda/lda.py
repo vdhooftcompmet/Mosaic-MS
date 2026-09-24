@@ -7,43 +7,44 @@ from argparse import Namespace
 from collections import namedtuple
 import logging
 from unittest.mock import patch
+from utils.configs import MS2LDAConfig
 
 
 ConvergenceResult = namedtuple("convergence_result", ["perplexity_history", "log_likelihood_history", "entropy_history_doc", "entropy_history_topic"])
 
 
-def train_model(documents: list[list[str]], params: Namespace) -> tuple[tp.LDAModel, ConvergenceResult]:
+def train_model(documents: list[list[str]], config: MS2LDAConfig) -> tuple[tp.LDAModel, ConvergenceResult]:
 
     result = ConvergenceResult([], [], [], [])
 
     model_parameters = dict(
-        rm_top=params.model_rm_top,
-        min_cf=params.model_min_cf,
-        min_df=params.model_min_df,
-        alpha=params.model_alpha,
-        eta=params.model_eta,
-        seed=params.model_seed
+        rm_top=config.model_rm_top,
+        min_cf=config.model_min_cf,
+        min_df=config.model_min_df,
+        alpha =config.model_alpha,
+        eta   =config.model_eta,
+        seed  =config.model_seed,
     )
     train_parameters = dict(
-        parallel=params.train_parallel, 
-        workers=params.train_workers
+        parallel=config.train_parallel,
+        workers =config.train_workers
     )
 
-    model = tp.LDAModel(k=params.nr_of_motifs, **model_parameters)
+    model = tp.LDAModel(k=config.nr_of_motifs, **model_parameters)
     for document in documents:
         model.add_doc(document)
 
     warnings.filterwarnings("ignore", message="The training result may differ even with fixed seed if `workers` != 1.", category=RuntimeWarning)
 
-    for i in tqdm(range(0, params.iterations, params.conv_step_size)):
-        model.train(params.conv_step_size, **train_parameters)  # model is doing x amount (step size) of iterations
+    for i in tqdm(range(0, config.iterations, config.conv_step_size)):
+        model.train(config.conv_step_size, **train_parameters)  # model is doing x amount (step size) of iterations
 
         result.perplexity_history     .append(model.perplexity)
         result.log_likelihood_history .append(model.ll_per_word)
         result.entropy_history_doc    .append(_calculate_document_entropy(model))
         result.entropy_history_topic  .append(_calculate_topic_entropy(model))
 
-        if _has_model_converged(result, params):
+        if _has_model_converged(result, config):
             warnings.resetwarnings()
             return model, result
 
@@ -77,11 +78,11 @@ def _calculate_topic_entropy(model: tp.LDAModel) -> float:
     return np.mean(entropy_values)
 
 
-def _has_model_converged(convergence_history: ConvergenceResult, params: Namespace) -> bool:
-    convengence_type = params.conv_type
+def _has_model_converged(convergence_history: ConvergenceResult, config: MS2LDAConfig) -> bool:
+    convengence_type = config.conv_type
     history = getattr(convergence_history, convengence_type)
-    window_size = params.conv_window_size
-    epsilon = params.conv_threshold
+    window_size = config.conv_window_size
+    epsilon = config.conv_threshold
 
     if len(history) <= window_size:
         return False
@@ -98,26 +99,26 @@ def _has_model_converged(convergence_history: ConvergenceResult, params: Namespa
     return True
 
 
-def extract_motifs(model: tp.LDAModel, params: Namespace) -> list[Spectrum]:
+def extract_motifs(model: tp.LDAModel, config: MS2LDAConfig) -> list[Spectrum]:
 
     result = []
     for k in range(model.k):
-        topic = model.get_topic_words(k, top_n=params.top_n_words)
+        topic = model.get_topic_words(k, top_n=config.top_n_words)
 
         if len(topic) == 0:
-            print(f" Warning !! topic with 0 features detected")
+            print(" Warning !! topic with 0 features detected")
 
         with patch.object(logging.getLogger("matchms"), "level", logging.ERROR):
-            mass2motif = _extract_motif(k, topic, params)
+            mass2motif = _extract_motif(k, topic, config)
         if mass2motif is None:
             continue
         result.append(mass2motif)
     return result
 
 
-def _extract_motif(k: int, topic: list[tuple[str, float]], params: Namespace) -> Spectrum:
-    significant_digits  = params.dataset_significant_digits
-    charge              = params.dataset_charge
+def _extract_motif(k: int, topic: list[tuple[str, float]], config: MS2LDAConfig) -> Spectrum:
+    significant_digits  = config.dataset_significant_digits
+    charge              = config.dataset_charge
 
     fragments = []
 

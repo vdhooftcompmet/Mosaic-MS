@@ -3,6 +3,7 @@ import networkx as nx
 from argparse import Namespace
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
+from utils.configs import SNAPMSConfig
 
 
 ID_COUNTER = -1
@@ -45,10 +46,10 @@ def remove_edges_with_same_value_for(edges, metadata, key):
     return [(u, v) for u, v in edges if metadata[u][key] != metadata[v][key]]
     
 
-def remove_small_subgraphs(graph: nx.Graph, params: Namespace):
+def remove_small_subgraphs(graph: nx.Graph, config: SNAPMSConfig):
     clusters = [x for x in nx.connected_components(graph)]
     for nodes in clusters:
-        if len(nodes) < params.min_annotation_size:
+        if len(nodes) < config.min_annotation_size:
             graph.remove_nodes_from(nodes)
 
 

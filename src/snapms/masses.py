@@ -4,15 +4,16 @@ from pathlib import Path
 from collections import defaultdict
 from argparse import Namespace
 from utils.constants import *
+from utils.configs import SNAPMSConfig
 
 
 # ATLAS
-def import_atlas(params: Namespace):
-    db_path = Path(params.reference_db)
+def import_atlas(config: SNAPMSConfig):
+    db_path = Path(config.reference_db)
 
     if not db_path.exists():
         raise FileNotFoundError(f"Reference DB file not found at: {db_path.resolve()}")
-    input_df = pd.read_json(str(params.reference_db), lines=True)
+    input_df = pd.read_json(str(config.reference_db), lines=True)
 
     return input_df
 
@@ -108,28 +109,28 @@ def derive_neutral_mass(precursor_mz, adduct):
     raise ValueError("Adduct not recognized")
 
 
-def get_adducts(mn, node, params):
-    if not params.detect_adduct:
-        return params.adduct_list
+def get_adducts(mn, node, config: SNAPMSConfig):
+    if not config.detect_adduct:
+        return config.adduct_list
     
     for adduct_key in ADDUCT_ALIASES:
 
         if adduct_key not in mn.nodes[node]:
             continue
 
-        return list(set( [mn.nodes[node][adduct_key]] + params.adduct_list ))
+        return list(set( [mn.nodes[node][adduct_key]] + config.adduct_list ))
 
     print(f"WARNING: no adduct found, relying on default adducts... {mn.nodes[node] = }")
-    return params.adduct_list
+    return config.adduct_list
 
 
 # DATABASE MATCHING
-def compute_adduct_matches(mn, nodes: dict, params: Namespace, db_df: pd.DataFrame) -> list[dict]:
+def compute_adduct_matches(mn, nodes: dict, config: SNAPMSConfig, db_df: pd.DataFrame) -> list[dict]:
     result = []
 
     for node in nodes:
 
-        for adduct in get_adducts(mn, node, params):
+        for adduct in get_adducts(mn, node, config):
 
             try:
                 precursor_mass = float(mn.nodes[node][KEY_PRECURSOR_MZ])
@@ -148,7 +149,7 @@ def compute_adduct_matches(mn, nodes: dict, params: Namespace, db_df: pd.DataFra
             except KeyError as e:
                 motifs = ""
 
-            mass_error = round((neutral_mass * params.ppm_error) / 1e6, 4)
+            mass_error = round((neutral_mass * config.ppm_error) / 1e6, 4)
             
             mask       = db_df["neutral_mass"].between(neutral_mass - mass_error, neutral_mass + mass_error)
             db_matches = db_df[mask]
@@ -215,7 +216,7 @@ def group_by_property(graph: nx.Graph, key_property: str | int) -> dict[dict]:
     return groups
 
 
-def filter_clusters(clusters, params) -> dict[dict]:
-    clusters = {k: v for k, v in clusters.items() if len(v) >= params.min_cluster_size}
-    clusters = {k: v for k, v in clusters.items() if len(v) <= params.max_cluster_size}
+def filter_clusters(clusters, config: SNAPMSConfig) -> dict[dict]:
+    clusters = {k: v for k, v in clusters.items() if len(v) >= config.min_cluster_size}
+    clusters = {k: v for k, v in clusters.items() if len(v) <= config.max_cluster_size}
     return clusters
