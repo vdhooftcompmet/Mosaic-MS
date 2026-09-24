@@ -12,7 +12,7 @@ import json
 
 def main(params) -> None:
     model_path = Path(params.model).resolve()
-    
+
     assert model_path.exists(), f"Error: Model file does not exist at {model_path}"
     assert model_path.is_file(), f"Error: {model_path} is a directory, not a file!"
 
@@ -22,21 +22,21 @@ def main(params) -> None:
     for node in mn:
         spectrum_data_str = str(mn.nodes[node]["peaks_json"])
         spectrum_data = parse_spectrum_peaks(spectrum_data_str)
-        
+
         mz = np.array([x[0] for x in spectrum_data])
         i  = np.array([x[1] for x in spectrum_data])
         metadata = {k: v for k, v in mn.nodes[node].items() if k != "peaks_json"}
         metadata = {k: v for k, v in metadata.items() if v is not None}
         metadata["retention_time"]  = metadata.get("rtinminutes")
         metadata["retention_index"] = 0
-            
+
         spectrum = Spectrum(mz, i, metadata)
         spectra.append(spectrum)
-        
+
     model = tp.LDAModel.load(str(model_path))
     topic_words = get_topic_words(model)
     params.dataset_significant_digits = derive_significant_digits(topic_words)
-    params.dataset_acquisition_type = dataset_acquisition_type(topic_words)
+    params.dataset_acquisition_type = derive_dataset_acquisition_type(topic_words)
 
     result = run_overlap_scores_calculation(spectra, model, params)
     _beta_matrix, _phi_matrix, _theta_matrix, overlap_scores = result
@@ -147,7 +147,7 @@ def derive_significant_digits(topic_words):
     return max(decimal_places)
     
 
-def dataset_acquisition_type(topic_words):
+def derive_dataset_acquisition_type(topic_words):
     has_losses = any(word.startswith('loss@') for word in topic_words)
 
     if has_losses:
