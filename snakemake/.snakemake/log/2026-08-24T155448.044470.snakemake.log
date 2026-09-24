@@ -1,3 +1,0 @@
-NameError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 190:
-name 'MS2LDA_PARAMS' is not defined
-  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 190, in <module>

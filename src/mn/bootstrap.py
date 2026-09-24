@@ -10,24 +10,25 @@ from ms2deepscore.models import load_model
 from ms2deepscore import MS2DeepScore
 from spec2vec import Spec2Vec
 from matchms.similarity.FlashSimilarity import FlashSimilarity
+from utils.configs import MNConfig
 from utils.context import suppress_output
 from utils.constants import *
 
 def run_bootstrap(
         spectra: list[Spectrum], 
-        params: Namespace, 
+        config: MNConfig, 
         ms2deepscore_model_path=None, 
         spec2vec_model_path=None, 
 ):
-    average_similarity, support = calculate_bootstrapping(spectra, params.similarity_type, params, ms2deepscore_model_path, spec2vec_model_path)
+    average_similarity, support = calculate_bootstrapping(spectra, config.similarity_type, config, ms2deepscore_model_path, spec2vec_model_path)
     return average_similarity, support
 
 
 def plain_similarity(
         spectra: list[Spectrum], 
-        params: Namespace | None = None, 
+        config: MNConfig | None = None, 
 ):
-    similarity_metric = get_similarity(params.similarity_type, params.flash_tolerance, params.ms2deepscore_model_path, params.spec2vec_model_path)
+    similarity_metric = get_similarity(config.similarity_type, config.flash_tolerance, config)
     with suppress_output():
         similarity_matrix = similarity_metric.matrix(list(spectra), list(spectra), array_type="numpy", is_symmetric=True)
 
@@ -36,40 +37,40 @@ def plain_similarity(
 
 def calculate_bootstrapping(
         spectra: list[Spectrum], 
-        params: Namespace, 
+        config: MNConfig, 
 ) -> tuple[np.ndarray, np.ndarray]:
     
     
-    bins = global_bins(spectra, params.binning_decimals)
-    binned_spectra = bin_spectra(spectra, params.binning_decimals)
+    bins = global_bins(spectra, config.binning_decimals)
+    binned_spectra = bin_spectra(spectra, config.binning_decimals)
 
     dataset_size = len(binned_spectra)
-    similarity_metric = get_similarity(params.similarity_type, params.flash_tolerance, params.ms2deepscore_model_path, params.spec2vec_model_path)
+    similarity_metric = get_similarity(config.similarity_type, config.flash_tolerance, config)
 
-    random_generator = np.random.default_rng(params.seed)
+    random_generator = np.random.default_rng(config.seed)
 
     total_pair_similarities = np.zeros((dataset_size, dataset_size), dtype=float)
     total_edge_support      = np.zeros((dataset_size, dataset_size), dtype=float)
 
-    for b in tqdm(range(params.B)):
+    for b in tqdm(range(config.B)):
 
         masked_spectra = _mask_spectra_globally(random_generator, bins, binned_spectra)
 
-        with parallel_backend("loky", n_jobs=params.n_jobs):
+        with parallel_backend("loky", n_jobs=1):
             with suppress_output():
                 similarity_matrix = similarity_metric.matrix(masked_spectra, masked_spectra, array_type="numpy", is_symmetric=True)
 
-        top_k_nearest_neighbours = mutual_topk(similarity_matrix, params.k)
+        top_k_nearest_neighbours = mutual_topk(similarity_matrix, config.k)
         top_k_nearest_neighbours_binary = (top_k_nearest_neighbours != 0).astype(int)
 
         total_pair_similarities += similarity_matrix
         total_edge_support      += top_k_nearest_neighbours_binary
         
 
-    mean_similarities = total_pair_similarities / params.B
+    mean_similarities = total_pair_similarities / config.B
 
     np.fill_diagonal(mean_similarities , 1)  # needed to exaxtly match original implementation
-    mean_edge_support = total_edge_support / params.B
+    mean_edge_support = total_edge_support / config.B
     return mean_similarities, mean_edge_support
 
 
@@ -121,7 +122,7 @@ def mutual_topk(A, k):
     return result
 
 
-def get_similarity(method_name: str, flash_tolerance: float, ms2deepscore_model_path=None, spec2vec_model_path=None):
+def get_similarity(method_name: str, flash_tolerance: float, config: MNConfig):
     match method_name:
         case "cos" | "cosine":
             return FlashSimilarity(score_type="cosine", matching_mode="fragment", tolerance=flash_tolerance)
@@ -130,17 +131,17 @@ def get_similarity(method_name: str, flash_tolerance: float, ms2deepscore_model_
             return FlashSimilarity(score_type="cosine", matching_mode="hybrid", tolerance=flash_tolerance)
         
         case "ms2ds" | "ms2dp" | "ms2deepscore":
-            if not Path(ms2deepscore_model_path).exists():
-                raise FileNotFoundError(f"file {ms2deepscore_model_path} not found")
+            if not Path(config.ms2deepscore_model_path).exists():
+                raise FileNotFoundError(f"file {config.ms2deepscore_model_path} not found")
             
-            ms2dp_model = load_model(str(ms2deepscore_model_path))
+            ms2dp_model = load_model(str(config.ms2deepscore_model_path))
             return MS2DeepScore(ms2dp_model, progress_bar=False)
         
         case "s2v" | "spec2vec":
-            if not Path(spec2vec_model_path).exists():
-                raise FileNotFoundError(f"file {spec2vec_model_path} not found")
+            if not Path(config.spec2vec_model_path).exists():
+                raise FileNotFoundError(f"file {config.spec2vec_model_path} not found")
             
-            w2v = gensim.models.Word2Vec.load(str(spec2vec_model_path))
+            w2v = gensim.models.Word2Vec.load(str(config.spec2vec_model_path))
             return Spec2Vec(model=w2v, intensity_weighting_power=0.5, allowed_missing_percentage=5.0, progress_bar=False)
         
         case _:

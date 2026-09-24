@@ -4,16 +4,15 @@ from matchms import Spectrum
 from argparse import Namespace
 import tomotopy as tp
 from tqdm import tqdm
-from matchms.importing import load_from_mgf
 from ms2lda.preprocessing import spectra_to_documents
 from utils.cx import read_cx, write_cx
 from setup.paths import MN_STYLE_FILE
-import ast
+import json
 
 
 def main(params) -> None:
     model_path = Path(params.model).resolve()
-    
+
     assert model_path.exists(), f"Error: Model file does not exist at {model_path}"
     assert model_path.is_file(), f"Error: {model_path} is a directory, not a file!"
 
@@ -22,22 +21,22 @@ def main(params) -> None:
     spectra = []
     for node in mn:
         spectrum_data_str = str(mn.nodes[node]["peaks_json"])
-        spectrum_data = to_list(spectrum_data_str)
-        
+        spectrum_data = parse_spectrum_peaks(spectrum_data_str)
+
         mz = np.array([x[0] for x in spectrum_data])
         i  = np.array([x[1] for x in spectrum_data])
         metadata = {k: v for k, v in mn.nodes[node].items() if k != "peaks_json"}
-        metadata = {k: v for k, v in metadata.items() if v != None}
+        metadata = {k: v for k, v in metadata.items() if v is not None}
         metadata["retention_time"]  = metadata.get("rtinminutes")
         metadata["retention_index"] = 0
-            
+
         spectrum = Spectrum(mz, i, metadata)
         spectra.append(spectrum)
-        
+
     model = tp.LDAModel.load(str(model_path))
     topic_words = get_topic_words(model)
     params.dataset_significant_digits = derive_significant_digits(topic_words)
-    params.dataset_acquisition_type = dataset_acquisition_type(topic_words)
+    params.dataset_acquisition_type = derive_dataset_acquisition_type(topic_words)
 
     result = run_overlap_scores_calculation(spectra, model, params)
     _beta_matrix, _phi_matrix, _theta_matrix, overlap_scores = result
@@ -48,10 +47,9 @@ def main(params) -> None:
 
     assert len(mn) == overlap_scores.shape[1], f"{len(mn)} vs {overlap_scores.shape[1]}"
 
-    for node in mn:
-        i = int(node)
+    node_list = list(mn.nodes())
+    for i, node in enumerate(node_list):
         scores = overlap_scores[:, i]
-
         present_motifs = [str(m) for m, s in enumerate(scores) if s > threshold]
         mn.nodes[node]["motifs"] = ";".join(present_motifs)
 
@@ -61,8 +59,10 @@ def main(params) -> None:
     write_cx(mn, params.graph, MN_STYLE_FILE)
 
 
-def to_list(list_str):
-    return ast.literal_eval(list_str)
+def parse_spectrum_peaks(peaks_raw: str | list) -> list:
+    if isinstance(peaks_raw, str):
+        return json.loads(peaks_raw)
+    return peaks_raw
     
 
 def run_overlap_scores_calculation(spectra: list[Spectrum],  model: tp.LDAModel,  params: Namespace) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -147,7 +147,7 @@ def derive_significant_digits(topic_words):
     return max(decimal_places)
     
 
-def dataset_acquisition_type(topic_words):
+def derive_dataset_acquisition_type(topic_words):
     has_losses = any(word.startswith('loss@') for word in topic_words)
 
     if has_losses:

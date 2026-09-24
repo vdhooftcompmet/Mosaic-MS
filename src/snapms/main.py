@@ -8,12 +8,13 @@ from utils.cx import read_cx, write_cx
 from setup.paths import ANNOTATION_STYLE_FILE
 from snapms.masses import import_atlas, compute_adduct_matches, merge_duplicates
 from snapms.network import get_edges, remove_edges_with_same_value_for, remove_self_similar_vals, remove_small_subgraphs, add_cluster_numbering, add_top_candidate_annotation
+from utils.configs import SNAPMSConfig
 
 
-def main(params):
-    atlas_df = import_atlas(params)
+def main(config: SNAPMSConfig):
+    atlas_df = import_atlas(config)
 
-    file = Path(params.graph)
+    file = Path(config.graph)
 
     try:
         mn = read_cx(str(file))
@@ -21,7 +22,7 @@ def main(params):
         print(f"WARNING: failed to read file {file}; error: {e}")
         return
 
-    annotation_folder = Path(params.result_folder)
+    annotation_folder = Path(config.result_folder)
     if not Path(annotation_folder).exists():
         prepare_directory(annotation_folder)
     
@@ -31,15 +32,15 @@ def main(params):
         clusters[mn_cluster_id].append(node)
 
     for mn_cluster_id, nodes in tqdm(clusters.items()):
-        if len(nodes) < params.min_cluster_size:
+        if len(nodes) < config.min_cluster_size:
             continue
-        if len(nodes) > params.max_cluster_size:
+        if len(nodes) > config.max_cluster_size:
             continue
 
-        matches = compute_adduct_matches(mn, nodes, params, atlas_df)
+        matches = compute_adduct_matches(mn, nodes, config, atlas_df)
         matches = merge_duplicates(matches)  # nodes with the same or very similar masses lead to multiple copies of compounds, here we merge them into one
 
-        edges = get_edges(matches, cutoff=params.cutoff)
+        edges = get_edges(matches, cutoff=config.cutoff)
         edges = remove_self_similar_vals(edges)  # makes sure nodes aren't connected to themselves
         edges = remove_edges_with_same_value_for(edges, matches, KEY_MN_NODE_ID)  # snapms logic dictates compounds from the same origin node cannot connect to each other
 
@@ -47,7 +48,7 @@ def main(params):
         graph.add_nodes_from((i, match) for i, match in enumerate(matches))
         graph.add_edges_from(edges)
 
-        remove_small_subgraphs(graph, params)  # small families are likely irrelevant
+        remove_small_subgraphs(graph, config)  # small families are likely irrelevant
 
         if len(graph) == 0:  # empty graphs are not saved for ease of user investigation
             continue

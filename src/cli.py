@@ -1,61 +1,47 @@
 import argparse
 from pathlib import Path
-import time
+from utils.configs import MS2LDAConfig, SNAPMSConfig, MNConfig
 
-OPTIMIZED_MODE = True
-
-if OPTIMIZED_MODE:  # super hacky method to save on import time
-    import sys
-    from unittest.mock import MagicMock
-
-    sys.modules['pynndescent'] = MagicMock()  # saves import time
-
-DEFAULT_CONFIG_DIR = Path("../config")
+MODULE_DIR = Path(__file__).parent.resolve()
+DEFAULT_CONFIG_DIR = MODULE_DIR.parent / "config"
 DEFAULT_MN_CONFIG = DEFAULT_CONFIG_DIR / "mn.yaml"
 DEFAULT_MS2LDA_CONFIG = DEFAULT_CONFIG_DIR / "ms2lda.yaml"
 DEFAULT_SNAPMS_CONFIG = DEFAULT_CONFIG_DIR / "snapms.yaml"
 
 
-# ==========================================
-# Handlers
-# ==========================================
+def prepare_args(args: argparse.Namespace, command_name: str, default_config: Path) -> argparse.Namespace:
+    """Applies YAML defaults, strips control attributes, and logs parameters."""
+    from utils.cli import add_defaults, print_params
 
-def handle_run_mn(args):
-    """Executes full Molecular Network (MN) generation workflow."""
-    from utils.cli import print_params, add_defaults
-
-    args.defaults = args.defaults if args.defaults else DEFAULT_MN_CONFIG
+    args.defaults = args.defaults if args.defaults else str(default_config)
     if args.defaults and Path(args.defaults).exists():
         add_defaults(args, str(args.defaults))
 
-    for key in ["defaults", "func", "command"]:
+    for key in ("defaults", "func", "command"):
         if hasattr(args, key):
             delattr(args, key)
 
-    print("> running mn with parameters:\n")
+    print(f"> running {command_name} with parameters:\n")
     print_params(args)
+    return args
 
+
+def handle_run_mn(args):
+    """Executes full Molecular Network (MN) generation workflow."""
+    args = prepare_args(args, "mn", DEFAULT_MN_CONFIG)
     from mn.main import main as run_mn_main
-    run_mn_main(args)
+
+    mn_config = MNConfig(**dict(vars(args)))
+    run_mn_main(mn_config)
 
 
 def handle_run_ms2lda(args):
     """Executes full MS2LDA workflow."""
-    from utils.cli import print_params, add_defaults
-
-    args.defaults = args.defaults if args.defaults else DEFAULT_MS2LDA_CONFIG
-    if args.defaults and Path(args.defaults).exists():
-        add_defaults(args, str(args.defaults))
-
-    for key in ["defaults", "func", "command"]:
-        if hasattr(args, key):
-            delattr(args, key)
-
-    print("> running ms2lda with parameters:\n")
-    print_params(args)
-
+    args = prepare_args(args, "ms2lda", DEFAULT_MS2LDA_CONFIG)
     from ms2lda.main import main as run_ms2lda_main
-    run_ms2lda_main(args)
+
+    ms2lda_config = MS2LDAConfig(**dict(vars(args)))
+    run_ms2lda_main(ms2lda_config)
 
 
 def handle_add_ms2lda(args):
@@ -69,21 +55,11 @@ def handle_add_ms2lda(args):
 
 def handle_run_snapms(args):
     """Executes full SnapMS compound identification workflow."""
-    from utils.cli import print_params, add_defaults
-
-    args.defaults = args.defaults if args.defaults else DEFAULT_SNAPMS_CONFIG
-    if args.defaults and Path(args.defaults).exists():
-        add_defaults(args, str(args.defaults))
-
-    for key in ["defaults", "func", "command"]:
-        if hasattr(args, key):
-            delattr(args, key)
-
-    print("> running snapms with parameters:\n")
-    print_params(args)
-
+    args = prepare_args(args, "snapms", DEFAULT_SNAPMS_CONFIG)
     from snapms.main import main as run_snapms_main
-    run_snapms_main(args)
+
+    snapms_config = SNAPMSConfig(**dict(vars(args)))
+    run_snapms_main(snapms_config)
 
 
 def handle_add_snapms(args):
@@ -92,7 +68,6 @@ def handle_add_snapms(args):
     Mirrors annotation_metadata scripts in rule snapms from Snakefile.
     """
     from add_snapms.main import main as add_snapms_main
-
     add_snapms_main(args)
 
 
@@ -101,70 +76,44 @@ def handle_run_all(args):
 
     # 1. Run Molecular Networking
     print("\n--- [Step 1/5] Running Molecular Networking ---")
-    mn_args = argparse.Namespace(
+    handle_run_mn(argparse.Namespace(
         mgf=args.mgf,
         defaults=args.mn_defaults,
-        similarity_type=None,
-        similarity_threshold=None,
-        flash_tolerance=None,
-        binning_decimals=None,
-        max_component_size=None,
-        B=None, k=None, seed=None, n_jobs=None,
-        ms2deepscore_model_path=None,
-        spec2vec_model_path=None,
-        use_average_similarity=None,
-        cache_similarity=None,
         base_graph_path=str(args.base_graph_path),
-        threshold_graph_path=None,
-        rescued_graph_path=None
-    )
-    handle_run_mn(mn_args)
+    ))
 
     # 2. Run MS2LDA
     print("\n--- [Step 2/5] Running MS2LDA ---")
-    ms2lda_args = argparse.Namespace(
+    handle_run_ms2lda(argparse.Namespace(
         mgf=args.mgf,
         defaults=args.ms2lda_defaults,
         model_path=str(args.ms2lda_model_path),
-        motifs_path=None, iterations=None, nr_of_motifs=None, top_n_words=None,
-        dataset_acquisition_type=None, dataset_charge=None, dataset_significant_digits=None,
-        train_parallel=None, train_workers=None, model_rm_top=None, model_min_cf=None,
-        model_min_df=None, model_alpha=None, model_eta=None, model_seed=None,
-        conv_step_size=None, conv_window_size=None, conv_threshold=None, conv_type=None
-    )
-    handle_run_ms2lda(ms2lda_args)
+    ))
 
     # 3. Add MS2LDA Results to Graph
     print("\n--- [Step 3/5] Adding MS2LDA Results to Graph ---")
-    add_ms2lda_args = argparse.Namespace(
+    handle_add_ms2lda(argparse.Namespace(
         graph=args.base_graph_path,
         model=args.ms2lda_model_path,
-        threshold=args.ms2lda_threshold
-    )
-    handle_add_ms2lda(add_ms2lda_args)
+        threshold=args.ms2lda_threshold,
+    ))
 
     # 4. Run SNAP-MS
     print("\n--- [Step 4/5] Running SNAP-MS ---")
-    snapms_args = argparse.Namespace(
+    handle_run_snapms(argparse.Namespace(
         graph=str(args.base_graph_path),
         defaults=args.snapms_defaults,
         result_folder=str(args.snapms_result_folder),
-        reference_db=None, ppm_error=None, min_cluster_size=None,
-        max_cluster_size=None, min_annotation_size=None, cutoff=None,
-        adduct_list=None, detect_adduct=None
-    )
-    handle_run_snapms(snapms_args)
+    ))
 
     # 5. Add SNAP-MS Results to Graph
     print("\n--- [Step 5/5] Adding SNAP-MS Results to Graph ---")
-    add_snapms_args = argparse.Namespace(
+    handle_add_snapms(argparse.Namespace(
         graph=args.base_graph_path,
-        snapms=args.snapms_result_folder
-    )
-    handle_add_snapms(add_snapms_args)
+        snapms=args.snapms_result_folder,
+    ))
 
-    print()
-    print(" Pipeline execution completed successfully!")
+    print("\n Pipeline execution completed successfully!")
 
 
 # ==========================================
@@ -227,10 +176,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_build.add_argument(
         "--seed", type=int, default=None,
         help="Random seed for reproducibility."
-    )
-    p_build.add_argument(
-        "--n-jobs", type=int, default=None,
-        help="Number of parallel worker threads."
     )
     p_build.add_argument(
         "--ms2deepscore-model-path", type=str, default=None,
@@ -367,11 +312,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Calculate motif overlap and integrate MS2LDA metadata into an existing CX graph network."
     )
     p_add_ms2lda.add_argument(
-        "--model", type=Path, required=True,
+        "--model", type=str, required=True,
         help="Path to trained LDA model file (.lda)."
     )
     p_add_ms2lda.add_argument(
-        "--graph", "-g", type=Path, required=True,
+        "--graph", "-g", type=str, required=True,
         help="Path to target network CX graph file."
     )
     p_add_ms2lda.add_argument(
@@ -441,11 +386,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Relay annotation metadata and flag SMILES on target CX graph."
     )
     p_add_snapms.add_argument(
-        "--graph", "-g", type=Path, required=True,
+        "--graph", "-g", type=str, required=True,
         help="Path to target network CX graph file."
     )
     p_add_snapms.add_argument(
-        "--snapms", "-a", type=Path, required=True,
+        "--snapms", "-a", type=str, required=True,
         help="Path to SNAP-MS annotation results directory containing output files."
     )
     p_add_snapms.set_defaults(func=handle_add_snapms)
@@ -462,15 +407,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to input MGF spectrum file."
     )
     p_run_all.add_argument(
-        "--base-graph-path", type=Path, default=Path("../results/base.cx"),
+        "--base-graph-path", type=str, default="../results/base.cx",
         help="Output path for intermediate and final network CX graph file (default: ../results/base.cx)."
     )
     p_run_all.add_argument(
-        "--ms2lda-model-path", type=Path, default=Path("../results/model.lda"),
+        "--ms2lda-model-path", type=str, default="../results/model.lda",
         help="Output path for trained MS2LDA model file (default: ../results/model.lda)."
     )
     p_run_all.add_argument(
-        "--snapms-result-folder", type=Path, default=Path("../results/snapms"),
+        "--snapms-result-folder", type=str, default="../results/snapms",
         help="Output directory for SNAP-MS intermediate results (default: ../results/snapms)."
     )
     p_run_all.add_argument(

@@ -3,9 +3,10 @@ import numpy as np
 from matchms import Spectrum
 from argparse import Namespace
 from utils.constants import *
+from utils.configs import MNConfig
 
 
-def run_networking(spectra, similarity, support, similarity_type, network_type, params):
+def run_networking(spectra, similarity, support, similarity_type, network_type, config: MNConfig):
 
     match network_type:
         case "base":
@@ -19,7 +20,7 @@ def run_networking(spectra, similarity, support, similarity_type, network_type, 
 
     similarity = np.nan_to_num(similarity, nan=0.0)
     support = np.nan_to_num(support, nan=0.0)
-    graph = fn(similarity, support, spectra, similarity_type, params)
+    graph = fn(similarity, support, spectra, similarity_type, config)
 
     return graph
 
@@ -29,12 +30,12 @@ def base_graph(
         mean_edge_support: np.ndarray, 
         spectra: list[Spectrum], 
         similarity_type: str,
-        params: Namespace
+        config: MNConfig
 ) -> nx.Graph:
     
 
     edges = np.ones_like(mean_similarities)
-    edges[mean_similarities < float(params.similarity_threshold)] = 0
+    edges[mean_similarities < float(config.similarity_threshold)] = 0
     np.fill_diagonal(edges , 0)  
 
     graph = build_nodes(spectra)
@@ -46,7 +47,7 @@ def base_graph(
 
     weights  = mean_similarities[rows, cols]
     
-    mask = _filter_components(rows, cols, weights, params.max_component_size)
+    mask = _filter_components(rows, cols, weights, config.max_component_size)
 
     rows = rows[mask]
     cols = cols[mask]
@@ -59,15 +60,14 @@ def base_graph(
     supports = mean_edge_support[rows, cols]
 
     for row, col, weight, support in zip(rows, cols, weights, supports):
-        if params.similarity_threshold is not None:
-            edge_class = "core" if weight >= params.similarity_threshold else "rescued"
+        if config.similarity_threshold is not None:
+            edge_class = "core" if weight >= config.similarity_threshold else "rescued"
             graph.add_edge(row, col, edge_class=edge_class, weight=weight, bootstrap_support=support)
         else:
             graph.add_edge(row, col, weight=weight, bootstrap_support=support)
 
     add_cluster_numbering(graph)
 
-    graph.graph.clear()
     return graph
     
 
@@ -76,13 +76,13 @@ def threshold_graph(
         mean_edge_support: np.ndarray, 
         spectra: list[Spectrum], 
         similarity_type: str,
-        params: Namespace
+        config: MNConfig
 ) -> nx.Graph:
     
 
     edges = np.ones_like(mean_similarities)
-    edges[mean_similarities < float(params.similarity_threshold)] = 0
-    edges[mean_edge_support < float(params.support_threshold)] = 0
+    edges[mean_similarities < float(config.similarity_threshold)] = 0
+    edges[mean_edge_support < float(config.support_threshold)] = 0
     np.fill_diagonal(edges , 0)  
 
 
@@ -95,7 +95,7 @@ def threshold_graph(
     
     weights  = mean_similarities[rows, cols]
     
-    mask = _filter_components(rows, cols, weights, params.max_component_size)
+    mask = _filter_components(rows, cols, weights, config.max_component_size)
 
     rows = rows[mask]
     cols = cols[mask]
@@ -108,15 +108,14 @@ def threshold_graph(
     supports = mean_edge_support[rows, cols]
 
     for row, col, weight, support in zip(rows, cols, weights, supports):
-        if params.similarity_threshold is not None:
-            edge_class = "core" if weight >= params.similarity_threshold else "rescued"
+        if config.similarity_threshold is not None:
+            edge_class = "core" if weight >= config.similarity_threshold else "rescued"
             graph.add_edge(row, col, edge_class=edge_class, weight=weight, bootstrap_support=support)
         else:
             graph.add_edge(row, col, weight=weight, bootstrap_support=support)
 
     add_cluster_numbering(graph)
 
-    graph.graph.clear()
     return graph
 
 
@@ -125,12 +124,12 @@ def rescued_graph(
         mean_edge_support: np.ndarray, 
         spectra: list[Spectrum], 
         similarity_type: str,
-        params: Namespace
+        config: MNConfig
 ) -> nx.Graph:
 
     edges = np.ones_like(mean_similarities)
-    edges[mean_similarities < float(params.rescue_similarity_threshold)] = 0
-    edges[mean_edge_support < float(params.support_threshold)] = 0
+    edges[mean_similarities < float(config.rescue_similarity_threshold)] = 0
+    edges[mean_edge_support < float(config.support_threshold)] = 0
     np.fill_diagonal(edges , 0)  
     edges = edges.astype(bool) 
 
@@ -143,7 +142,7 @@ def rescued_graph(
 
     weights  = mean_similarities[rows, cols]
     
-    mask = _filter_components(rows, cols, weights, params.max_component_size)
+    mask = _filter_components(rows, cols, weights, config.max_component_size)
 
     rows = rows[mask]
     cols = cols[mask]
@@ -156,16 +155,14 @@ def rescued_graph(
     supports = mean_edge_support[rows, cols]
 
     for row, col, weight, support in zip(rows, cols, weights, supports):
-        if params.similarity_threshold is not None:
-            edge_class = "core" if weight >= params.similarity_threshold else "rescued"
+        if config.similarity_threshold is not None:
+            edge_class = "core" if weight >= config.similarity_threshold else "rescued"
             graph.add_edge(row, col, edge_class=edge_class, weight=weight, bootstrap_support=support)
         else:
             graph.add_edge(row, col, weight=weight, bootstrap_support=support)
 
     add_cluster_numbering(graph)
 
-
-    graph.graph.clear()
     return graph
 
 

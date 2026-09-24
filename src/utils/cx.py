@@ -61,7 +61,7 @@ def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None):
 
     # Use the built-in uploader or manual dump
     with open(file_path, 'w') as f:
-        with contextlib.redirect_stdout(open(os.devnull, 'w')):
+        with open(os.devnull, 'w') as devnull, contextlib.redirect_stdout(devnull):
             cx_data = nice_cx.to_cx()
         json.dump(cx_data, f)
 
