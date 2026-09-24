@@ -27,7 +27,7 @@ def plain_similarity(
         spectra: list[Spectrum], 
         params: Namespace | None = None, 
 ):
-    similarity_metric = get_similarity(params.similarity_type, params.flash_tolerance, params.ms2deepscore_model_path, params.spec2vec_model_path)
+    similarity_metric = get_similarity(params.similarity_type, params.flash_tolerance, params)
     with suppress_output():
         similarity_matrix = similarity_metric.matrix(list(spectra), list(spectra), array_type="numpy", is_symmetric=True)
 
@@ -44,7 +44,7 @@ def calculate_bootstrapping(
     binned_spectra = bin_spectra(spectra, params.binning_decimals)
 
     dataset_size = len(binned_spectra)
-    similarity_metric = get_similarity(params.similarity_type, params.flash_tolerance, params.ms2deepscore_model_path, params.spec2vec_model_path)
+    similarity_metric = get_similarity(params.similarity_type, params.flash_tolerance, params)
 
     random_generator = np.random.default_rng(params.seed)
 
@@ -121,7 +121,7 @@ def mutual_topk(A, k):
     return result
 
 
-def get_similarity(method_name: str, flash_tolerance: float, ms2deepscore_model_path=None, spec2vec_model_path=None):
+def get_similarity(method_name: str, flash_tolerance: float, params):
     match method_name:
         case "cos" | "cosine":
             return FlashSimilarity(score_type="cosine", matching_mode="fragment", tolerance=flash_tolerance)
@@ -130,17 +130,17 @@ def get_similarity(method_name: str, flash_tolerance: float, ms2deepscore_model_
             return FlashSimilarity(score_type="cosine", matching_mode="hybrid", tolerance=flash_tolerance)
         
         case "ms2ds" | "ms2dp" | "ms2deepscore":
-            if not Path(ms2deepscore_model_path).exists():
-                raise FileNotFoundError(f"file {ms2deepscore_model_path} not found")
+            if not Path(params.ms2deepscore_model_path).exists():
+                raise FileNotFoundError(f"file {params.ms2deepscore_model_path} not found")
             
-            ms2dp_model = load_model(str(ms2deepscore_model_path))
+            ms2dp_model = load_model(str(params.ms2deepscore_model_path))
             return MS2DeepScore(ms2dp_model, progress_bar=False)
         
         case "s2v" | "spec2vec":
-            if not Path(spec2vec_model_path).exists():
-                raise FileNotFoundError(f"file {spec2vec_model_path} not found")
+            if not Path(params.spec2vec_model_path).exists():
+                raise FileNotFoundError(f"file {params.spec2vec_model_path} not found")
             
-            w2v = gensim.models.Word2Vec.load(str(spec2vec_model_path))
+            w2v = gensim.models.Word2Vec.load(str(params.spec2vec_model_path))
             return Spec2Vec(model=w2v, intensity_weighting_power=0.5, allowed_missing_percentage=5.0, progress_bar=False)
         
         case _:
