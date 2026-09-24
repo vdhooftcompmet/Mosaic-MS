@@ -8,7 +8,6 @@ from ms2lda.preprocessing import spectra_to_documents
 from utils.cx import read_cx, write_cx
 from setup.paths import MN_STYLE_FILE
 import json
-from typing import Any, Dict, List, Optional
 
 
 def main(params) -> None:
@@ -60,27 +59,11 @@ def main(params) -> None:
     write_cx(mn, params.graph, MN_STYLE_FILE)
 
 
-def parse_spectrum_peaks(peaks_json: str) -> list:
-
-    # Guard Statement 1: Check for None or non-string types
-    if peaks_json is None:
-        raise ValueError("Node peak attribute 'peaks_json' is missing or None.")
-
-    # Guard Statement 2: Check for empty or whitespace-only strings
-    cleaned_json: str = peaks_json.strip()
-    if not cleaned_json:
-        raise ValueError("Node peak attribute 'peaks_json' is an empty string.")
-
-    # Guard Statement 3: Parse and validate JSON structure
-    try:
-        parsed_peaks: Any = json.loads(cleaned_json)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Failed to decode 'peaks_json': {exc}") from exc
-
-    if not isinstance(parsed_peaks, list):
-        raise ValueError(f"Expected 'peaks_json' to parse as a list, got {type(parsed_peaks).__name__}.")
-
-    return parsed_peaks
+def parse_spectrum_peaks(peaks_raw: str | list) -> list:
+    if isinstance(peaks_raw, str):
+        return json.loads(peaks_raw)
+    return peaks_raw
+    
 
 def run_overlap_scores_calculation(spectra: list[Spectrum],  model: tp.LDAModel,  params: Namespace) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # see original/MS2LDA/Visualization/lda_dict for original function
