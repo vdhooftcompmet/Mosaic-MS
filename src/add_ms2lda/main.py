@@ -26,7 +26,7 @@ def main(params) -> None:
         mz = np.array([x[0] for x in spectrum_data])
         i  = np.array([x[1] for x in spectrum_data])
         metadata = {k: v for k, v in mn.nodes[node].items() if k != "peaks_json"}
-        metadata = {k: v for k, v in metadata.items() if v != None}
+        metadata = {k: v for k, v in metadata.items() if v is not None}
         metadata["retention_time"]  = metadata.get("rtinminutes")
         metadata["retention_index"] = 0
             
