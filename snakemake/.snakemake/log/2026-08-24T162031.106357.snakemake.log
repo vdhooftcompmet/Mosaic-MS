@@ -1,4 +1,0 @@
-SyntaxError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 164:
-invalid syntax:
-				motifs = f"{RESULT_FOLDER}/{{nr_of_motifs}}_motifs.mgf" , ,
-

@@ -1,2 +1,0 @@
-WildcardError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 47:
-No values given for wildcard 'nr_of_motifs'.

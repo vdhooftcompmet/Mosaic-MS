@@ -1,4 +1,0 @@
-Injecting conda environment C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\environment.yaml.
-FileNotFoundError in file "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\src\snakemake\workflow\Snakefile", line 46:
-[Errno 2] No such file or directory: 'C:\\Users\\Jorick van IJcken\\code\\testversion\\STRATA-MS\\src\\snakemake\\workflow\\environment.yaml'
-  File "C:\Users\Jorick van IJcken\code\testversion\STRATA-MS\.snakemake\Lib\site-packages\conda_inject\__init__.py", line 143, in inject_env_file
