@@ -67,7 +67,6 @@ def base_graph(
 
     add_cluster_numbering(graph)
 
-    graph.graph.clear()
     return graph
     
 
@@ -116,7 +115,6 @@ def threshold_graph(
 
     add_cluster_numbering(graph)
 
-    graph.graph.clear()
     return graph
 
 
@@ -164,8 +162,6 @@ def rescued_graph(
 
     add_cluster_numbering(graph)
 
-
-    graph.graph.clear()
     return graph
 
 
