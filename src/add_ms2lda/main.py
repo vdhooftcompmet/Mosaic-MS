@@ -47,10 +47,9 @@ def main(params) -> None:
 
     assert len(mn) == overlap_scores.shape[1], f"{len(mn)} vs {overlap_scores.shape[1]}"
 
-    for node in mn:
-        i = int(node)
+    node_list = list(mn.nodes())
+    for i, node in enumerate(node_list):
         scores = overlap_scores[:, i]
-
         present_motifs = [str(m) for m, s in enumerate(scores) if s > threshold]
         mn.nodes[node]["motifs"] = ";".join(present_motifs)
 
