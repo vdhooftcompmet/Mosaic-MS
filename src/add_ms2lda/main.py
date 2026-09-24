@@ -4,11 +4,10 @@ from matchms import Spectrum
 from argparse import Namespace
 import tomotopy as tp
 from tqdm import tqdm
-from matchms.importing import load_from_mgf
 from ms2lda.preprocessing import spectra_to_documents
 from utils.cx import read_cx, write_cx
 from setup.paths import MN_STYLE_FILE
-import ast
+import json
 
 
 def main(params) -> None:
@@ -22,7 +21,7 @@ def main(params) -> None:
     spectra = []
     for node in mn:
         spectrum_data_str = str(mn.nodes[node]["peaks_json"])
-        spectrum_data = to_list(spectrum_data_str)
+        spectrum_data = parse_spectrum_peaks(spectrum_data_str)
         
         mz = np.array([x[0] for x in spectrum_data])
         i  = np.array([x[1] for x in spectrum_data])
@@ -61,8 +60,10 @@ def main(params) -> None:
     write_cx(mn, params.graph, MN_STYLE_FILE)
 
 
-def to_list(list_str):
-    return ast.literal_eval(list_str)
+def parse_spectrum_peaks(peaks_raw: str | list) -> list:
+    if isinstance(peaks_raw, str):
+        return json.loads(peaks_raw)
+    return peaks_raw
     
 
 def run_overlap_scores_calculation(spectra: list[Spectrum],  model: tp.LDAModel,  params: Namespace) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
