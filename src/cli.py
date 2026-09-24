@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from utils.configs import MS2LDAConfig, SNAPMSConfig, MNConfig
 
 MODULE_DIR = Path(__file__).parent.resolve()
 DEFAULT_CONFIG_DIR = MODULE_DIR.parent / "config"
@@ -29,14 +30,18 @@ def handle_run_mn(args):
     """Executes full Molecular Network (MN) generation workflow."""
     args = prepare_args(args, "mn", DEFAULT_MN_CONFIG)
     from mn.main import main as run_mn_main
-    run_mn_main(args)
+
+    mn_config = MNConfig(**dict(vars(args)))
+    run_mn_main(mn_config)
 
 
 def handle_run_ms2lda(args):
     """Executes full MS2LDA workflow."""
     args = prepare_args(args, "ms2lda", DEFAULT_MS2LDA_CONFIG)
     from ms2lda.main import main as run_ms2lda_main
-    run_ms2lda_main(args)
+
+    ms2lda_config = MS2LDAConfig(**dict(vars(args)))
+    run_ms2lda_main(ms2lda_config)
 
 
 def handle_add_ms2lda(args):
@@ -52,7 +57,9 @@ def handle_run_snapms(args):
     """Executes full SnapMS compound identification workflow."""
     args = prepare_args(args, "snapms", DEFAULT_SNAPMS_CONFIG)
     from snapms.main import main as run_snapms_main
-    run_snapms_main(args)
+
+    snapms_config = SNAPMSConfig(**dict(vars(args)))
+    run_snapms_main(snapms_config)
 
 
 def handle_add_snapms(args):
@@ -169,10 +176,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_build.add_argument(
         "--seed", type=int, default=None,
         help="Random seed for reproducibility."
-    )
-    p_build.add_argument(
-        "--n-jobs", type=int, default=None,
-        help="Number of parallel worker threads."
     )
     p_build.add_argument(
         "--ms2deepscore-model-path", type=str, default=None,
