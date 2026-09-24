@@ -1,244 +1,204 @@
-import networkx as nx
 import numpy as np
-from matchms import Spectrum
-from argparse import Namespace
-from utils.constants import *
+import networkx as nx
+from collections import namedtuple
+from typing import Callable
 from utils.configs import MNConfig
+from matchms import Spectrum
+
+EdgeData = namedtuple("EdgeData", ["u", "v", "sim", "sup", "lbl"])
 
 
-def run_networking(spectra, similarity, support, similarity_type, network_type, config: MNConfig):
-
-    match network_type:
-        case "base":
-            fn = base_graph
-        case "threshold":
-            fn = threshold_graph
-        case "rescued":
-            fn = rescued_graph
-        case _: 
-            raise ValueError(f"{network_type = }")
+def run_networking(
+    spectra: list[Spectrum],
+    similarity: np.ndarray,
+    support: np.ndarray,
+    network_type: str,
+    config: MNConfig
+) -> nx.Graph:
+    strat = {
+        "base"      : filter_base_strategy(
+            config.similarity_threshold
+        ),
+        "threshold" : filter_threshold_strategy(
+            config.similarity_threshold,
+            config.support_threshold
+        ),
+        "rescued"   : filter_rescue_strategy(
+            config.similarity_threshold,
+            config.support_threshold,
+            config.rescue_similarity_threshold,
+            config.support_threshold
+        ),
+    }[network_type]
 
     similarity = np.nan_to_num(similarity, nan=0.0)
     support = np.nan_to_num(support, nan=0.0)
-    graph = fn(similarity, support, spectra, similarity_type, config)
 
-    return graph
-
-
-def base_graph(
-        mean_similarities: np.ndarray, 
-        mean_edge_support: np.ndarray, 
-        spectra: list[Spectrum], 
-        similarity_type: str,
-        config: MNConfig
-) -> nx.Graph:
-    
-
-    edges = np.ones_like(mean_similarities)
-    edges[mean_similarities < float(config.similarity_threshold)] = 0
-    np.fill_diagonal(edges , 0)  
-
-    graph = build_nodes(spectra)
-
-    rows, cols = np.nonzero(edges)
-    if len(rows) == 0 or len(cols) == 0:
-        print("WARNING: no edges could be made")
-        return graph
-
-    weights  = mean_similarities[rows, cols]
-    
-    mask = _filter_components(rows, cols, weights, config.max_component_size)
-
-    rows = rows[mask]
-    cols = cols[mask]
-
-    if len(rows) == 0 or len(cols) == 0:
-        print("WARNING: no edges left after filtering")
-        return graph
-    
-    weights  = mean_similarities[rows, cols]
-    supports = mean_edge_support[rows, cols]
-
-    for row, col, weight, support in zip(rows, cols, weights, supports):
-        if config.similarity_threshold is not None:
-            edge_class = "core" if weight >= config.similarity_threshold else "rescued"
-            graph.add_edge(row, col, edge_class=edge_class, weight=weight, bootstrap_support=support)
-        else:
-            graph.add_edge(row, col, weight=weight, bootstrap_support=support)
-
-    add_cluster_numbering(graph)
-
-    return graph
-    
-
-def threshold_graph(
-        mean_similarities: np.ndarray, 
-        mean_edge_support: np.ndarray, 
-        spectra: list[Spectrum], 
-        similarity_type: str,
-        config: MNConfig
-) -> nx.Graph:
-    
-
-    edges = np.ones_like(mean_similarities)
-    edges[mean_similarities < float(config.similarity_threshold)] = 0
-    edges[mean_edge_support < float(config.support_threshold)] = 0
-    np.fill_diagonal(edges , 0)  
+    G = build_graph(spectra, similarity, support, strat, config.max_component_size)
+    return G
 
 
-    graph = build_nodes(spectra)
-
-    rows, cols = np.nonzero(edges)
-    if len(rows) == 0 or len(cols) == 0:
-        print("WARNING: no edges could be made")
-        return graph
-    
-    weights  = mean_similarities[rows, cols]
-    
-    mask = _filter_components(rows, cols, weights, config.max_component_size)
-
-    rows = rows[mask]
-    cols = cols[mask]
-
-    if len(rows) == 0 or len(cols) == 0:
-        print("WARNING: no edges left after filtering")
-        return graph
-    
-    weights  = mean_similarities[rows, cols]
-    supports = mean_edge_support[rows, cols]
-
-    for row, col, weight, support in zip(rows, cols, weights, supports):
-        if config.similarity_threshold is not None:
-            edge_class = "core" if weight >= config.similarity_threshold else "rescued"
-            graph.add_edge(row, col, edge_class=edge_class, weight=weight, bootstrap_support=support)
-        else:
-            graph.add_edge(row, col, weight=weight, bootstrap_support=support)
-
-    add_cluster_numbering(graph)
-
-    return graph
+def filter_base_strategy(sim_threshold: float = 0.7) -> Callable[[EdgeData], EdgeData]:
+    def inner(edge_data: EdgeData) -> EdgeData:
+        mask = edge_data.sim  >= sim_threshold
+        edge_data = EdgeData(*(arr[mask] for arr in edge_data))
+        return edge_data
+    return inner
 
 
-def rescued_graph(
-        mean_similarities: np.ndarray, 
-        mean_edge_support: np.ndarray, 
-        spectra: list[Spectrum], 
-        similarity_type: str,
-        config: MNConfig
+def filter_threshold_strategy(sim_threshold: float = 0.7, support_threshold: float = 0.3) -> Callable[[EdgeData], EdgeData]:
+    def inner(edge_data: EdgeData) -> EdgeData:
+        mask = (edge_data.sim >= sim_threshold) & (edge_data.sup >= support_threshold)
+        edge_data = EdgeData(*(arr[mask] for arr in edge_data))
+        return edge_data
+    return inner
+
+
+def filter_rescue_strategy(
+    sim_core: float = 0.7,
+    support_core: float = 0.3,
+    sim_rescue_min: float = 0.2,
+    support_rescue: float = 0.4
+) -> Callable[[EdgeData], EdgeData]:
+    def inner(edge_data: EdgeData) -> EdgeData:
+        core_mask   = (edge_data.sim >= sim_core) & (edge_data.sup >= support_core)
+
+        rescue_mask = (edge_data.sim >= sim_rescue_min) & (edge_data.sim < sim_core) & (edge_data.sup >= support_rescue)
+        mask = core_mask | rescue_mask
+
+        labels = np.where(core_mask[mask], "core", "rescued")
+
+        return EdgeData(
+            edge_data.u[mask],
+            edge_data.v[mask],
+            edge_data.sim[mask],
+            edge_data.sup[mask],
+            labels
+        )
+    return inner
+
+
+def build_graph(
+    spectra: list[Spectrum],
+    sim: np.ndarray,
+    sup: np.ndarray,
+    filter_strategy: Callable[[EdgeData], EdgeData],
+    max_component_size: int | None = None,
 ) -> nx.Graph:
 
-    edges = np.ones_like(mean_similarities)
-    edges[mean_similarities < float(config.rescue_similarity_threshold)] = 0
-    edges[mean_edge_support < float(config.support_threshold)] = 0
-    np.fill_diagonal(edges , 0)  
-    edges = edges.astype(bool) 
+    G, edge_data = _extract_graphdata(spectra, sim, sup)
+    edge_data = filter_strategy(edge_data)
 
-    graph = build_nodes(spectra)
+    if max_component_size is not None:
+        edge_data = _filter_components(edge_data, max_component_size, retire_groups=True)
 
-    rows, cols = np.nonzero(edges)
-    if len(rows) == 0 or len(cols) == 0:
-        print("WARNING: no edges could be made")
-        return graph
+    for u, v, sim, sup, lbl in zip(*edge_data):
 
-    weights  = mean_similarities[rows, cols]
-    
-    mask = _filter_components(rows, cols, weights, config.max_component_size)
+        metadata = dict(weight=float(sim), bootstrap_support=float(sup))
+        if lbl != "":
+            metadata |= dict(edge_class=str(lbl))
+        G.add_edge(u, v, **metadata)
 
-    rows = rows[mask]
-    cols = cols[mask]
+    _assign_cluster_ids(G)
 
-    if len(rows) == 0 or len(cols) == 0:
-        print("WARNING: no edges left after filtering")
-        return graph
-    
-    weights  = mean_similarities[rows, cols]
-    supports = mean_edge_support[rows, cols]
-
-    for row, col, weight, support in zip(rows, cols, weights, supports):
-        if config.similarity_threshold is not None:
-            edge_class = "core" if weight >= config.similarity_threshold else "rescued"
-            graph.add_edge(row, col, edge_class=edge_class, weight=weight, bootstrap_support=support)
-        else:
-            graph.add_edge(row, col, weight=weight, bootstrap_support=support)
-
-    add_cluster_numbering(graph)
-
-    return graph
+    return G
 
 
-def build_nodes(spectra: list[Spectrum]) -> nx.Graph:
-    graph = nx.Graph()
+def _extract_graphdata(spectra: list[Spectrum], sim: np.ndarray, sup: np.ndarray) -> tuple[nx.Graph, EdgeData]:
+    G = nx.Graph()
 
     for index, spectrum in enumerate(spectra):
         metadata = {k: str(v) for k, v in spectrum.to_dict().items()}
+        G.add_node(index, **metadata)
 
-        if not metadata:
-            print(f"{spectrum = }")
-        assert metadata
+    n = len(spectra)
 
-        graph.add_node(index, **metadata)
+    # Extract upper-triangle pairs to avoid counting each edge twice.
+    u, v = np.triu_indices(n, k=1)
+    sim = sim[u, v]
+    sup = sup[u, v]
 
-    return graph
+    lbl = np.full(len(u), "")
+    return G, EdgeData(u, v, sim, sup, lbl)
+
+
+def _filter_components(
+    edge_data: EdgeData,
+    max_component_size: int,
+    retire_groups: bool,
+) -> EdgeData:
+    if len(edge_data.u) == 0:
+        return edge_data
+
+    retired_groups = set()
+
+    nr_of_nodes = max(np.max(edge_data.u), np.max(edge_data.v)) + 1
+    node_groups = np.arange(nr_of_nodes)   # each node starts in its own singleton cluster
+    group_sizes = np.ones(nr_of_nodes)     # every cluster starts with size 1
+
+    # Work on a copy so the caller's array is not modified.
+    sim = edge_data.sim.copy()
+
+    # Process edges from strongest to weakest. When sim is equal, discriminate based on u and then v to make deterministic
+    u_nodes = np.minimum(edge_data.u, edge_data.v)
+    v_nodes = np.maximum(edge_data.v, edge_data.u)
+    indices = np.lexsort((v_nodes, u_nodes, -sim))
+
+    mask = np.zeros_like(sim)
+
+    for i in indices:
+        strength = sim[i]
+        u, v = u_nodes[i], v_nodes[i]
+
+        if strength == 0:  # all remaining edges are zeroed out, nothing left to do
+            break
+
+        u_group = node_groups[u]  # look up current cluster of u
+        v_group = node_groups[v]  # look up current cluster of v
+
+        if retire_groups and any(g in retired_groups for g in [u_group, v_group]):
+            # At least one cluster is frozen; retire both to prevent partial absorption.
+            retired_groups.add(u_group)
+            retired_groups.add(v_group)
+            continue
+
+        if u_group == v_group:
+            # Edge is within an existing cluster — no size change, always accept.
+            mask[i] = 1
+            continue
+
+        u_group_size = group_sizes[u_group]
+        v_group_size = group_sizes[v_group]
+
+        if u_group_size + v_group_size > max_component_size:
+            # Merging would exceed the limit; retire both clusters.
+            retired_groups.add(u_group)
+            retired_groups.add(v_group)
+            continue
+
+        # Accept the merge and update cluster bookkeeping.
+        mask[i] = 1
+
+        # The lower-numbered group absorbs the higher-numbered one.
+        dominant_group, purged_group = sorted((u_group, v_group))
+        node_groups[node_groups == purged_group] = dominant_group
+        group_sizes[dominant_group] = u_group_size + v_group_size
+        group_sizes[purged_group] = 0
+
+    mask = mask.astype(bool)
+    edge_data = EdgeData(*(arr[mask] for arr in edge_data))
+    return edge_data
+
+
+def _assign_cluster_ids(graph: nx.Graph) -> None:
+    components = sorted(nx.connected_components(graph), key=len, reverse=True)
+    for cid, comp in enumerate(components):
+        for node in comp:
+            graph.nodes[node]["component"] = cid
 
 
 def add_cluster_numbering(graph: nx.Graph):
     ordered_clusters = sorted(nx.connected_components(graph), key=lambda x: len(x), reverse=True)
     for i, cluster in enumerate(ordered_clusters):
         for node in cluster:
-            graph.nodes[node][KEY_MN_CLUSTER_ID] = i
-
-
-def _filter_components(u_nodes: np.array, v_nodes: np.array, similarity_array: np.array, max_component_size: int, retire_groups: bool = False) -> np.array:
-
-    retired_groups = set()
-    
-    nr_of_nodes = max(np.max(u_nodes), np.max(v_nodes)) + 1
-    node_groups = np.array(range(nr_of_nodes))  # lookup
-    group_sizes = np.ones(nr_of_nodes) 
-
-    similarity_array = similarity_array.copy()  # make a copy to modify
-
-    indices = np.argsort(similarity_array)[::-1]  # indices of numbers from high to low
-
-    mask = np.zeros_like(similarity_array)
-
-    for i in indices:
-        strength = similarity_array[i]
-        u, v = u_nodes[i], v_nodes[i]
-
-        if strength == 0:  # encountering a strength of 0 means we're not going to add any more edges on the remaining data, so we can end the process (remember we sorted them by size)
-            break
-
-        u_group = node_groups[u]  # look up the group of u
-        v_group = node_groups[v]  # look up the group of v
-
-        if retire_groups and any(g in retired_groups for g in [u_group, v_group]):  # if we turned on this setting, we don't touch the retired groups (matches behaviour of original breakup implementation)
-            retired_groups.add(u_group)
-            retired_groups.add(v_group)  # we need to make sure BOTH groups are retired after a failed connection
-            continue
-
-        if u_group == v_group:  # if they're already in the same cluster, the cluster won't grow in size
-            mask[i] = 1
-            continue
-
-        u_group_size = group_sizes[u_group]  # get the size of group u
-        v_group_size = group_sizes[v_group]  # get the size of group v
-
-        group_sum = u_group_size + v_group_size
-        if group_sum > max_component_size:  # adding these clusters would exceed the max size
-            retired_groups.add(u_group)
-            retired_groups.add(v_group)
-            continue
-
-        # if we get here, we're allowed to add the clusters
-        mask[i] = 1
-
-        # we need to update our group administration
-        dominant_group, purged_group = sorted((u_group, v_group))  # determine which group will take over the members of the other (lowest group nr is dominant)
-
-        node_groups[node_groups == purged_group] = dominant_group
-        group_sizes[dominant_group] = group_sum
-        group_sizes[purged_group] = 0
-
-
-    return mask.astype(bool)
+            graph.nodes[node]["mn_cluster_id"] = i
