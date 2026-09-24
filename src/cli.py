@@ -407,15 +407,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to input MGF spectrum file."
     )
     p_run_all.add_argument(
-        "--base-graph-path", type=str, default="../results/base.cx",
+        "--base-graph-path", type=str, default=str(MODULE_DIR / "results" / "base.cx"),
         help="Output path for intermediate and final network CX graph file (default: ../results/base.cx)."
     )
     p_run_all.add_argument(
-        "--ms2lda-model-path", type=str, default="../results/model.lda",
+        "--ms2lda-model-path", type=str, default=str(MODULE_DIR / "results" / "model.lda"),
         help="Output path for trained MS2LDA model file (default: ../results/model.lda)."
     )
     p_run_all.add_argument(
-        "--snapms-result-folder", type=str, default="../results/snapms",
+        "--snapms-result-folder", type=str, default=str(MODULE_DIR / "results" / "snapms"),
         help="Output directory for SNAP-MS intermediate results (default: ../results/snapms)."
     )
     p_run_all.add_argument(
