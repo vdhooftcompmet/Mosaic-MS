@@ -415,7 +415,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output path for trained MS2LDA model file (default: ../results/model.lda)."
     )
     p_run_all.add_argument(
-        "--snapms-result-folder", type=str, default=str(MODULE_DIR / "results" / "snapms"),
+        "--snapms-result-folder", type=str, default=str(MODULE_DIR.parent / "results" / "snapms"),
         help="Output directory for SNAP-MS intermediate results (default: ../results/snapms)."
     )
     p_run_all.add_argument(
