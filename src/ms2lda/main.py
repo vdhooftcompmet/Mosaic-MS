@@ -1,8 +1,6 @@
 from pathlib import Path
 from matchms.importing import load_from_mgf
-from ms2lda.lda import train_model, extract_motifs
-from ms2lda.preprocessing import clean_spectra, spectra_to_documents
-from ms2lda.storage import store_model, store_mass2motifs
+from ms2lda.ms2lda import train_model, extract_motifs, clean_spectra, spectra_to_documents, store_model, store_mass2motifs
 from utils.configs import MS2LDAConfig
 
 

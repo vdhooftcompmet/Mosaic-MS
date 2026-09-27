@@ -4,7 +4,7 @@ from matchms import Spectrum
 from argparse import Namespace
 import tomotopy as tp
 from tqdm import tqdm
-from ms2lda.preprocessing import spectra_to_documents
+from ms2lda.ms2lda import spectra_to_documents
 from utils.cx import read_cx, write_cx
 from setup.paths import MN_STYLE_FILE
 import json
