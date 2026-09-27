@@ -1,7 +1,9 @@
-import networkx as nx 
 from collections import defaultdict
-from utils.cx import write_cx, read_cx, read_annotations
+
+import networkx as nx
+
 from setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
+from utils.cx import read_annotations, read_cx, write_cx
 
 
 def main(params):
@@ -22,7 +24,7 @@ def add_snapms_data(mn: nx.Graph, annotations: dict) -> None:
     clusters = defaultdict(set)
 
     for node in mn:
-        cluster = str( mn.nodes[node]["mn_cluster_id"] )
+        cluster = str(mn.nodes[node]["mn_cluster_id"])
         clusters[cluster].add(node)
 
     for cluster, nodes in clusters.items():
@@ -33,9 +35,10 @@ def add_snapms_data(mn: nx.Graph, annotations: dict) -> None:
                 mn.nodes[node]["ann_mass_diversity"] = 0
                 continue
 
-            max_diversity = max([annotation.nodes[n]["ann_mass_diversity"] for n in annotation])
+            max_diversity = max(
+                [annotation.nodes[n]["ann_mass_diversity"] for n in annotation]
+            )
             mn.nodes[node]["ann_mass_diversity"] = max_diversity
-
 
     for node in mn:
         mn.nodes[node]["is_annotated"] = False
@@ -45,4 +48,3 @@ def add_snapms_data(mn: nx.Graph, annotations: dict) -> None:
 
         for node in clusters[cluster_id]:
             mn.nodes[node]["is_annotated"] = is_top_candidate
-

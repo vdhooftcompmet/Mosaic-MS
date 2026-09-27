@@ -1,6 +1,5 @@
 from scipy.sparse import save_npz, load_npz, csr_matrix
-from mn.bootstrap import calculate_bootstrapping, plain_similarity
-from mn.network import run_networking, add_cluster_numbering
+from mn.mn import calculate_bootstrapping, plain_similarity, run_networking, add_cluster_numbering
 from utils.folders import prepare_directory
 from setup.paths import MN_STYLE_FILE
 import hashlib
