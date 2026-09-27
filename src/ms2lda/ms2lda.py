@@ -153,7 +153,7 @@ def _has_model_converged(convergence_history: ConvergenceResult, config: MS2LDAC
 
     changes = []
     for i in range(1, len(history)):
-        change = abs(history[i] - history[i - 1]) / history[i - 1]
+        change = abs(history[i] - history[i - 1]) / (abs(history[i - 1]) + 1e-12)
         changes.append(change)
 
     has_converged = all(change < epsilon for change in changes[-window_size:])
