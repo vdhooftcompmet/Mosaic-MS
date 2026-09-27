@@ -5,8 +5,10 @@ from pathlib import Path
 from utils.folders import prepare_directory
 from utils.cx import read_cx, write_cx
 from setup.paths import ANNOTATION_STYLE_FILE
-from snapms.masses import import_atlas, compute_adduct_matches, merge_duplicates
-from snapms.network import get_edges, remove_edges_with_same_value_for, remove_self_similar_vals, remove_small_subgraphs, add_cluster_numbering, add_top_candidate_annotation
+from snapms.snapms import (
+    import_atlas, compute_adduct_matches, merge_duplicates, get_edges,
+    remove_edges_with_same_value_for, remove_self_similar_vals,
+    remove_small_subgraphs, add_cluster_numbering, add_top_candidate_annotation)
 from utils.configs import SNAPMSConfig
 
 
@@ -20,7 +22,7 @@ def main(config: SNAPMSConfig):
     annotation_folder = Path(config.result_folder)
     if not Path(annotation_folder).exists():
         prepare_directory(annotation_folder)
-    
+
     clusters: dict[int, list[int]] = defaultdict(list)
     for node in mn:
         mn_cluster_id = mn.nodes[node]["mn_cluster_id"]
@@ -54,4 +56,3 @@ def main(config: SNAPMSConfig):
 
         save_path = annotation_folder / f"graph-{mn_cluster_id}.cx"
         write_cx(graph, save_path, ANNOTATION_STYLE_FILE)
-
