@@ -1,77 +1,94 @@
+from collections import namedtuple
+from collections.abc import Callable
+from pathlib import Path
+
 import gensim
+import networkx as nx
 import numpy as np
 from joblib import parallel_backend
-from typing import Any, List
-from tqdm import tqdm
 from matchms import Spectrum
-from pathlib import Path
-from ms2deepscore.models import load_model
-from ms2deepscore import MS2DeepScore
-from spec2vec import Spec2Vec
 from matchms.similarity.FlashSimilarity import FlashSimilarity
+from ms2deepscore import MS2DeepScore
+from ms2deepscore.models import load_model
+from spec2vec import Spec2Vec
+from tqdm import tqdm
+
 from utils.configs import MNConfig
 from utils.context import suppress_output
-import networkx as nx
-from collections import namedtuple
-from typing import Callable
 
 
 def run_bootstrap(
-        spectra: list[Spectrum],
-        config: MNConfig,
-        ms2deepscore_model_path=None,
-        spec2vec_model_path=None,
+    spectra: list[Spectrum],
+    config: MNConfig,
+    ms2deepscore_model_path=None,
+    spec2vec_model_path=None,
 ):
-    average_similarity, support = calculate_bootstrapping(spectra, config.similarity_type, config, ms2deepscore_model_path, spec2vec_model_path)
+    average_similarity, support = calculate_bootstrapping(
+        spectra,
+        config.similarity_type,
+        config,
+        ms2deepscore_model_path,
+        spec2vec_model_path,
+    )
     return average_similarity, support
 
 
 def plain_similarity(
-        spectra: list[Spectrum],
-        config: MNConfig | None = None,
+    spectra: list[Spectrum],
+    config: MNConfig,
 ):
-    similarity_metric = get_similarity(config.similarity_type, config.flash_tolerance, config)
+    similarity_metric = get_similarity(
+        config.similarity_type, config.flash_tolerance, config
+    )
     with suppress_output():
-        similarity_matrix = similarity_metric.matrix(list(spectra), list(spectra), array_type="numpy", is_symmetric=True)
+        similarity_matrix = similarity_metric.matrix(
+            list(spectra), list(spectra), array_type="numpy", is_symmetric=True
+        )
 
     return similarity_matrix
 
 
 def calculate_bootstrapping(
-        spectra: list[Spectrum],
-        config: MNConfig,
+    spectra: list[Spectrum],
+    config: MNConfig,
 ) -> tuple[np.ndarray, np.ndarray]:
-
 
     bins = global_bins(spectra, config.binning_decimals)
     binned_spectra = bin_spectra(spectra, config.binning_decimals)
 
     dataset_size = len(binned_spectra)
-    similarity_metric = get_similarity(config.similarity_type, config.flash_tolerance, config)
+    similarity_metric = get_similarity(
+        config.similarity_type, config.flash_tolerance, config
+    )
 
     random_generator = np.random.default_rng(config.seed)
 
     total_pair_similarities = np.zeros((dataset_size, dataset_size), dtype=float)
-    total_edge_support      = np.zeros((dataset_size, dataset_size), dtype=float)
+    total_edge_support = np.zeros((dataset_size, dataset_size), dtype=float)
 
     for b in tqdm(range(config.B)):
-
         masked_spectra = _mask_spectra_globally(random_generator, bins, binned_spectra)
 
         with parallel_backend("loky", n_jobs=1):
             with suppress_output():
-                similarity_matrix = similarity_metric.matrix(masked_spectra, masked_spectra, array_type="numpy", is_symmetric=True)
+                similarity_matrix = similarity_metric.matrix(
+                    masked_spectra,
+                    masked_spectra,
+                    array_type="numpy",
+                    is_symmetric=True,
+                )
 
         top_k_nearest_neighbours = mutual_topk(similarity_matrix, config.k)
         top_k_nearest_neighbours_binary = (top_k_nearest_neighbours != 0).astype(int)
 
         total_pair_similarities += similarity_matrix
-        total_edge_support      += top_k_nearest_neighbours_binary
-
+        total_edge_support += top_k_nearest_neighbours_binary
 
     mean_similarities = total_pair_similarities / config.B
 
-    np.fill_diagonal(mean_similarities , 1)  # needed to exaxtly match original implementation
+    np.fill_diagonal(
+        mean_similarities, 1
+    )  # needed to exaxtly match original implementation
     mean_edge_support = total_edge_support / config.B
     return mean_similarities, mean_edge_support
 
@@ -91,7 +108,7 @@ def global_bins(spectra: list[Spectrum], decimals: int) -> np.ndarray[float]:
     return np.asarray(sorted_mz)
 
 
-def bin_spectra(spectra: List[Spectrum], decimals: int) -> List[Spectrum]:
+def bin_spectra(spectra: list[Spectrum], decimals: int) -> list[Spectrum]:
     binned_spectra = []
 
     for spec in spectra:
@@ -99,7 +116,7 @@ def bin_spectra(spectra: List[Spectrum], decimals: int) -> List[Spectrum]:
         intensities = spec.peaks.intensities.copy()
         metadata = spec.metadata.copy() if spec.metadata else None
 
-        new_spectrum = Spectrum(rounded_mz,  intensities, metadata)
+        new_spectrum = Spectrum(rounded_mz, intensities, metadata)
         binned_spectra.append(new_spectrum)
 
     return binned_spectra
@@ -110,7 +127,9 @@ def mutual_topk(A, k):
     A_work = A.copy()
     np.fill_diagonal(A_work, -np.inf)
 
-    row_sorted = np.argsort(A_work, axis=1)[:, ::-1]  # consider making this argpartition
+    row_sorted = np.argsort(A_work, axis=1)[
+        :, ::-1
+    ]  # consider making this argpartition
     row_topk = row_sorted[:, :k]
 
     row_mask = np.zeros_like(A_work, dtype=bool)
@@ -127,33 +146,48 @@ def mutual_topk(A, k):
 def get_similarity(method_name: str, flash_tolerance: float, config: MNConfig):
     match method_name:
         case "cos" | "cosine":
-            return FlashSimilarity(score_type="cosine", matching_mode="fragment", tolerance=flash_tolerance)
-        
+            return FlashSimilarity(
+                score_type="cosine", matching_mode="fragment", tolerance=flash_tolerance
+            )
+
         case "modcos" | "modified_cosine":
-            return FlashSimilarity(score_type="cosine", matching_mode="hybrid", tolerance=flash_tolerance)
-        
+            return FlashSimilarity(
+                score_type="cosine", matching_mode="hybrid", tolerance=flash_tolerance
+            )
+
         case "ms2ds" | "ms2dp" | "ms2deepscore":
             if not Path(config.ms2deepscore_model_path).exists():
-                raise FileNotFoundError(f"file {config.ms2deepscore_model_path} not found")
-            
+                raise FileNotFoundError(
+                    f"file {config.ms2deepscore_model_path} not found"
+                )
+
             ms2dp_model = load_model(str(config.ms2deepscore_model_path))
             return MS2DeepScore(ms2dp_model, progress_bar=False)
-        
+
         case "s2v" | "spec2vec":
             if not Path(config.spec2vec_model_path).exists():
                 raise FileNotFoundError(f"file {config.spec2vec_model_path} not found")
-            
+
             w2v = gensim.models.Word2Vec.load(str(config.spec2vec_model_path))
-            return Spec2Vec(model=w2v, intensity_weighting_power=0.5, allowed_missing_percentage=5.0, progress_bar=False)
-        
+            return Spec2Vec(
+                model=w2v,
+                intensity_weighting_power=0.5,
+                allowed_missing_percentage=5.0,
+                progress_bar=False,
+            )
+
         case _:
             raise ValueError(f"unknown option {method_name}")
 
 
-def _mask_spectra_globally(random_generator: Any, global_bins: np.ndarray, binned_spectra: np.ndarray) -> list[Spectrum]:
+def _mask_spectra_globally(
+    random_generator: any, global_bins: np.ndarray, binned_spectra: np.ndarray
+) -> list[Spectrum]:
     result = []
 
-    sampled_indices = random_generator.integers(0, len(global_bins), size=len(global_bins))
+    sampled_indices = random_generator.integers(
+        0, len(global_bins), size=len(global_bins)
+    )
 
     sampled_bins = global_bins[sampled_indices]
     sampled_bins = np.unique(sampled_bins)
@@ -161,15 +195,15 @@ def _mask_spectra_globally(random_generator: Any, global_bins: np.ndarray, binne
     for index, spectrum in enumerate(binned_spectra):
         mask = np.isin(spectrum.peaks.mz, sampled_bins)
 
-        mz = spectrum.peaks.mz[mask] 
+        mz = spectrum.peaks.mz[mask]
         intensities = spectrum.peaks.intensities[mask]
 
         mz = mz.astype("float32")
         intensities = intensities.astype("float32")
 
         if len(mz) == 0:
-            mz = np.array([ global_bins[0] ], dtype="float32")
-            intensities = np.array([0.0],     dtype="float32")
+            mz = np.array([global_bins[0]], dtype="float32")
+            intensities = np.array([0.0], dtype="float32")
 
         masked_spectrum = Spectrum(mz, intensities, spectrum.metadata)
         result.append(masked_spectrum)
@@ -185,21 +219,18 @@ def run_networking(
     similarity: np.ndarray,
     support: np.ndarray,
     network_type: str,
-    config: MNConfig
+    config: MNConfig,
 ) -> nx.Graph:
     strat = {
-        "base"      : filter_base_strategy(
-            config.similarity_threshold
+        "base": filter_base_strategy(config.similarity_threshold),
+        "threshold": filter_threshold_strategy(
+            config.similarity_threshold, config.support_threshold
         ),
-        "threshold" : filter_threshold_strategy(
-            config.similarity_threshold,
-            config.support_threshold
-        ),
-        "rescued"   : filter_rescue_strategy(
+        "rescued": filter_rescue_strategy(
             config.similarity_threshold,
             config.support_threshold,
             config.rescue_similarity_threshold,
-            config.support_threshold
+            config.support_threshold,
         ),
     }[network_type]
 
@@ -212,17 +243,21 @@ def run_networking(
 
 def filter_base_strategy(sim_threshold: float = 0.7) -> Callable[[EdgeData], EdgeData]:
     def inner(edge_data: EdgeData) -> EdgeData:
-        mask = edge_data.sim  >= sim_threshold
+        mask = edge_data.sim >= sim_threshold
         edge_data = EdgeData(*(arr[mask] for arr in edge_data))
         return edge_data
+
     return inner
 
 
-def filter_threshold_strategy(sim_threshold: float = 0.7, support_threshold: float = 0.3) -> Callable[[EdgeData], EdgeData]:
+def filter_threshold_strategy(
+    sim_threshold: float = 0.7, support_threshold: float = 0.3
+) -> Callable[[EdgeData], EdgeData]:
     def inner(edge_data: EdgeData) -> EdgeData:
         mask = (edge_data.sim >= sim_threshold) & (edge_data.sup >= support_threshold)
         edge_data = EdgeData(*(arr[mask] for arr in edge_data))
         return edge_data
+
     return inner
 
 
@@ -230,12 +265,16 @@ def filter_rescue_strategy(
     sim_core: float = 0.7,
     support_core: float = 0.3,
     sim_rescue_min: float = 0.2,
-    support_rescue: float = 0.4
+    support_rescue: float = 0.4,
 ) -> Callable[[EdgeData], EdgeData]:
     def inner(edge_data: EdgeData) -> EdgeData:
-        core_mask   = (edge_data.sim >= sim_core) & (edge_data.sup >= support_core)
+        core_mask = (edge_data.sim >= sim_core) & (edge_data.sup >= support_core)
 
-        rescue_mask = (edge_data.sim >= sim_rescue_min) & (edge_data.sim < sim_core) & (edge_data.sup >= support_rescue)
+        rescue_mask = (
+            (edge_data.sim >= sim_rescue_min)
+            & (edge_data.sim < sim_core)
+            & (edge_data.sup >= support_rescue)
+        )
         mask = core_mask | rescue_mask
 
         labels = np.where(core_mask[mask], "core", "rescued")
@@ -245,8 +284,9 @@ def filter_rescue_strategy(
             edge_data.v[mask],
             edge_data.sim[mask],
             edge_data.sup[mask],
-            labels
+            labels,
         )
+
     return inner
 
 
@@ -262,10 +302,11 @@ def build_graph(
     edge_data = filter_strategy(edge_data)
 
     if max_component_size is not None:
-        edge_data = _filter_components(edge_data, max_component_size, retire_groups=True)
+        edge_data = _filter_components(
+            edge_data, max_component_size, retire_groups=True
+        )
 
     for u, v, sim, sup, lbl in zip(*edge_data):
-
         metadata = dict(weight=float(sim), bootstrap_support=float(sup))
         if lbl != "":
             metadata |= dict(edge_class=str(lbl))
@@ -276,7 +317,9 @@ def build_graph(
     return G
 
 
-def _extract_graphdata(spectra: list[Spectrum], sim: np.ndarray, sup: np.ndarray) -> tuple[nx.Graph, EdgeData]:
+def _extract_graphdata(
+    spectra: list[Spectrum], sim: np.ndarray, sup: np.ndarray
+) -> tuple[nx.Graph, EdgeData]:
     G = nx.Graph()
 
     for index, spectrum in enumerate(spectra):
@@ -305,8 +348,10 @@ def _filter_components(
     retired_groups = set()
 
     nr_of_nodes = max(np.max(edge_data.u), np.max(edge_data.v)) + 1
-    node_groups = np.arange(nr_of_nodes)   # each node starts in its own singleton cluster
-    group_sizes = np.ones(nr_of_nodes)     # every cluster starts with size 1
+    node_groups = np.arange(
+        nr_of_nodes
+    )  # each node starts in its own singleton cluster
+    group_sizes = np.ones(nr_of_nodes)  # every cluster starts with size 1
 
     # Work on a copy so the caller's array is not modified.
     sim = edge_data.sim.copy()
@@ -370,7 +415,9 @@ def _assign_cluster_ids(graph: nx.Graph) -> None:
 
 
 def add_cluster_numbering(graph: nx.Graph):
-    ordered_clusters = sorted(nx.connected_components(graph), key=lambda x: len(x), reverse=True)
+    ordered_clusters = sorted(
+        nx.connected_components(graph), key=lambda x: len(x), reverse=True
+    )
     for i, cluster in enumerate(ordered_clusters):
         for node in cluster:
             graph.nodes[node]["mn_cluster_id"] = i

@@ -1,17 +1,18 @@
 import random
+
 import numpy as np
-from tqdm import tqdm
-from matchms.importing import load_from_mgf
 from matchms.exporting import save_as_mgf
-from matchms.filtering.default_pipelines import DEFAULT_FILTERS, CLEAN_PEAKS
+from matchms.filtering.default_pipelines import CLEAN_PEAKS, DEFAULT_FILTERS
 from matchms.filtering.SpectrumProcessor import SpectrumProcessor
+from matchms.importing import load_from_mgf
 from matchms.similarity.FlashSimilarity import FlashSimilarity
 from rdkit import Chem
+from tqdm import tqdm
 
 
 def clean_mgf(input_mgf, output_mgf):
 
-    spectra = list(load_from_mgf( str(input_mgf) ))
+    spectra = list(load_from_mgf(str(input_mgf)))
     spectrum_processor = SpectrumProcessor(DEFAULT_FILTERS + CLEAN_PEAKS)
     result, _ = spectrum_processor.process_spectra(spectra, progress_bar=True)
     result = list(result)
@@ -26,7 +27,7 @@ def filter_by_inchikey(input_mgf, output_mgf):
     result = []
     seen = set()
 
-    spectra = list( load_from_mgf( str(input_mgf) ) )
+    spectra = list(load_from_mgf(str(input_mgf)))
     spectra = random.sample(spectra, len(spectra))
 
     for spectrum in tqdm(spectra):
@@ -34,7 +35,7 @@ def filter_by_inchikey(input_mgf, output_mgf):
 
         if inchi_key in seen:
             continue
-        
+
         seen.add(inchi_key)
         result.append(spectrum)
 
@@ -43,12 +44,14 @@ def filter_by_inchikey(input_mgf, output_mgf):
 
 def filter_by_cosine(input_mgf, output_mgf):
     result = []
-    skip = set() 
+    skip = set()
 
-    spectra = list( load_from_mgf( str(input_mgf) ) )
+    spectra = list(load_from_mgf(str(input_mgf)))
     spectra = random.sample(spectra, len(spectra))
 
-    similarity = FlashSimilarity(score_type="cosine", matching_mode="fragment", tolerance=0.01).matrix(spectra, spectra, is_symmetric=True)
+    similarity = FlashSimilarity(
+        score_type="cosine", matching_mode="fragment", tolerance=0.01
+    ).matrix(spectra, spectra, is_symmetric=True)
 
     for i, spectrum in tqdm(enumerate(spectra)):
         if i in skip:
@@ -66,7 +69,7 @@ def filter_by_cosine(input_mgf, output_mgf):
 
 
 def _smiles_to_inchikey(smiles):
-    if not smiles: 
+    if not smiles:
         return None
 
     mol = Chem.MolFromSmiles(smiles)

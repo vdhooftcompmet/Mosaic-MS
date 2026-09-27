@@ -1,14 +1,15 @@
 import io
 import re
+from pathlib import Path
 from typing import Any
+
+from matplotlib.axes import Axes
 from rdkit import Chem
 from rdkit.Chem import Draw
-from matplotlib.axes import Axes
-from pathlib import Path
 
 
 def text_to_image(text: str, scale=1.6):
-    lines = text.split('\n')
+    lines = text.split("\n")
     max_line_len = max(len(l) for l in lines) if lines else 1
 
     width = int(max(120, max_line_len * 6.2) * scale)
@@ -20,8 +21,7 @@ def text_to_image(text: str, scale=1.6):
     for line in lines:
         text_spans += f'<tspan x="10" dy="1.05em">{line}</tspan>'
 
-    svg = \
-    f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
     <rect width="100%" height="100%" fill="white"/>
     <text x="10" y="8" font-family="DejaVu Sans, Liberation Sans, sans-serif" font-size="{font_size}px" fill="#333333">
     {text_spans}
@@ -82,7 +82,7 @@ def make_vector_grid(columns: list, bg_color: str = "white") -> str:
 
     grid_svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{total_width}" height="{total_height}" viewBox="0 0 {total_width} {total_height}">',
-        f'<rect width="100%" height="100%" fill="{bg_color}"/>'
+        f'<rect width="100%" height="100%" fill="{bg_color}"/>',
     ]
 
     y_offset = 0
@@ -104,25 +104,31 @@ def make_vector_grid(columns: list, bg_color: str = "white") -> str:
             cell_x = x_offset + (max_widths[c] - padded_w) // 2
             cell_y = y_offset + (max_heights[r] - padded_h) // 2
 
-            clean_content = re.sub(r'<\?xml[^>]*\?>', '', svg_str)
-            clean_content = re.sub(r'<!DOCTYPE[^>]*>', '', clean_content, flags=re.IGNORECASE)
-            clean_content = re.sub(r'<svg[^>]*>', strip_fixed_dims, clean_content, count=1)
+            clean_content = re.sub(r"<\?xml[^>]*\?>", "", svg_str)
+            clean_content = re.sub(
+                r"<!DOCTYPE[^>]*>", "", clean_content, flags=re.IGNORECASE
+            )
+            clean_content = re.sub(
+                r"<svg[^>]*>", strip_fixed_dims, clean_content, count=1
+            )
 
-            grid_svg.append(f'<svg x="{cell_x}" y="{cell_y}" width="{padded_w}" height="{padded_h}" style="overflow: visible;">')
+            grid_svg.append(
+                f'<svg x="{cell_x}" y="{cell_y}" width="{padded_w}" height="{padded_h}" style="overflow: visible;">'
+            )
             grid_svg.append(clean_content)
-            grid_svg.append('</svg>')
+            grid_svg.append("</svg>")
 
-            x_offset += max_widths[c] + 10 
+            x_offset += max_widths[c] + 10
         y_offset += max_heights[r]
 
-    grid_svg.append('</svg>')
+    grid_svg.append("</svg>")
     return "\n".join(grid_svg)
 
 
 def strip_fixed_dims(match):
     tag = match.group(0)
-    tag = re.sub(r'\bwidth=["\'][^"\']*["\']', '', tag)
-    tag = re.sub(r'\bheight=["\'][^"\']*["\']', '', tag)
+    tag = re.sub(r'\bwidth=["\'][^"\']*["\']', "", tag)
+    tag = re.sub(r'\bheight=["\'][^"\']*["\']', "", tag)
     return tag
 
 
@@ -130,7 +136,9 @@ def get_dims(svg_str):
     if svg_str is None:
         return 0, 0
 
-    viewbox_match = re.search(r'viewBox=["\']\s*0\s+0\s+([\d\.]+)\s+([\d\.]+)["\']', svg_str)
+    viewbox_match = re.search(
+        r'viewBox=["\']\s*0\s+0\s+([\d\.]+)\s+([\d\.]+)["\']', svg_str
+    )
 
     if viewbox_match:
         w_val = int(float(viewbox_match.group(1)))
@@ -164,7 +172,9 @@ def to_svg_string(img: Any) -> str | None:
     if hasattr(img, "extract"):
         return str(img)
 
-    raise TypeError(f"Raster types like arrays/PIL images cannot be implicitly converted to SVG: {type(img)}")
+    raise TypeError(
+        f"Raster types like arrays/PIL images cannot be implicitly converted to SVG: {type(img)}"
+    )
 
 
 def save_svg(svg: str, path: str | Path) -> None:

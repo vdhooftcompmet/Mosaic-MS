@@ -1,6 +1,8 @@
 from argparse import Namespace
 from pathlib import Path
+
 import yaml
+
 from utils.folders import load_params
 
 
@@ -25,12 +27,14 @@ def stringify_args(args: Namespace | None, ignore: list[str] | None = None) -> s
 
 def get_params(parser, defaults: str | Path):
     cli_params = parser.parse_args()
-    cli_params = Namespace( **{k: v for k, v in vars(cli_params).items() if v is not None} )
+    cli_params = Namespace(
+        **{k: v for k, v in vars(cli_params).items() if v is not None}
+    )
 
     with open(str(defaults), "r") as f:
         params = yaml.safe_load(f)
     default_params = Namespace(**params)
-    return Namespace( **( vars(default_params) | vars(cli_params)))
+    return Namespace(**(vars(default_params) | vars(cli_params)))
 
 
 def print_params(params):
@@ -47,7 +51,9 @@ def add_defaults(params, defaults_path):
         for k, v in dict(vars(default_params)).items():
             key_normalized = k.replace("-", "_")
 
-            if not hasattr(params, key_normalized) or (getattr(params, key_normalized) is None):
+            if not hasattr(params, key_normalized) or (
+                getattr(params, key_normalized) is None
+            ):
                 setattr(params, key_normalized, v)
 
 
@@ -66,7 +72,7 @@ def completeness_check(params, allowed_missing=None):
         missing += [(k, v)]
 
     if missing:
-        msg = f'{len(missing)} missing values:'
+        msg = f"{len(missing)} missing values:"
         for k, v in missing:
             msg += "\n\t" + f"{k:<30} : {v}"
 

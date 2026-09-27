@@ -1,19 +1,23 @@
-import numpy as np
-import tomotopy as tp
-from tqdm import tqdm
-from matchms import Spectrum
+import logging
 import warnings
 from collections import namedtuple
-import logging
-from unittest.mock import patch
-from utils.configs import MS2LDAConfig
+from collections.abc import Generator
 from pathlib import Path
-from matchms.exporting import save_as_mgf
-from typing import Generator
+from unittest.mock import patch
+
 import matchms.filtering as msfilters
+import numpy as np
+import tomotopy as tp
+from matchms import Spectrum
+from matchms.exporting import save_as_mgf
+from tqdm import tqdm
+
+from utils.configs import MS2LDAConfig
 
 
-def clean_spectra(spectra: Generator[Spectrum, None, None], config: MS2LDAConfig) -> list[Spectrum]:
+def clean_spectra(
+    spectra: Generator[Spectrum, None, None], config: MS2LDAConfig
+) -> list[Spectrum]:
     result = []
 
     spectra = [x for x in spectra]
@@ -23,10 +27,20 @@ def clean_spectra(spectra: Generator[Spectrum, None, None], config: MS2LDAConfig
         spectrum = msfilters.add_retention_index(spectrum)
         spectrum = msfilters.add_retention_time(spectrum)
         spectrum = msfilters.normalize_intensities(spectrum)
-        spectrum = msfilters.select_by_relative_intensity(spectrum, intensity_from=config.prep_min_intensity, intensity_to=config.prep_max_intensity)
-        spectrum = msfilters.select_by_mz(spectrum, mz_from=config.prep_min_mz, mz_to=config.prep_max_mz)
-        spectrum = msfilters.reduce_to_number_of_peaks(spectrum, n_max=config.prep_max_frags)
-        spectrum = msfilters.require_minimum_number_of_peaks(spectrum, n_required=config.prep_min_frags)
+        spectrum = msfilters.select_by_relative_intensity(
+            spectrum,
+            intensity_from=config.prep_min_intensity,
+            intensity_to=config.prep_max_intensity,
+        )
+        spectrum = msfilters.select_by_mz(
+            spectrum, mz_from=config.prep_min_mz, mz_to=config.prep_max_mz
+        )
+        spectrum = msfilters.reduce_to_number_of_peaks(
+            spectrum, n_max=config.prep_max_frags
+        )
+        spectrum = msfilters.require_minimum_number_of_peaks(
+            spectrum, n_required=config.prep_min_frags
+        )
 
         if spectrum:
             result.append(spectrum)
@@ -37,16 +51,17 @@ def clean_spectra(spectra: Generator[Spectrum, None, None], config: MS2LDAConfig
     return result
 
 
-def spectra_to_documents(spectra: list[Spectrum], config: MS2LDAConfig) -> list[list[str]]:
+def spectra_to_documents(
+    spectra: list[Spectrum], config: MS2LDAConfig
+) -> list[list[str]]:
 
     assert config.dataset_acquisition_type in ["DDA", "DIA"]
 
     result = []
 
     for spectrum in spectra:
-
         spectrum = msfilters.normalize_intensities(spectrum)
-        
+
         document: list[str] = []
         result.append(document)
 
@@ -74,10 +89,20 @@ def spectra_to_documents(spectra: list[Spectrum], config: MS2LDAConfig) -> list[
     return result
 
 
-ConvergenceResult = namedtuple("convergence_result", ["perplexity_history", "log_likelihood_history", "entropy_history_doc", "entropy_history_topic"])
+ConvergenceResult = namedtuple(
+    "convergence_result",
+    [
+        "perplexity_history",
+        "log_likelihood_history",
+        "entropy_history_doc",
+        "entropy_history_topic",
+    ],
+)
 
 
-def train_model(documents: list[list[str]], config: MS2LDAConfig) -> tuple[tp.LDAModel, ConvergenceResult]:
+def train_model(
+    documents: list[list[str]], config: MS2LDAConfig
+) -> tuple[tp.LDAModel, ConvergenceResult]:
 
     result = ConvergenceResult([], [], [], [])
 
@@ -85,28 +110,33 @@ def train_model(documents: list[list[str]], config: MS2LDAConfig) -> tuple[tp.LD
         rm_top=config.model_rm_top,
         min_cf=config.model_min_cf,
         min_df=config.model_min_df,
-        alpha =config.model_alpha,
-        eta   =config.model_eta,
-        seed  =config.model_seed,
+        alpha=config.model_alpha,
+        eta=config.model_eta,
+        seed=config.model_seed,
     )
     train_parameters = dict(
-        parallel=config.train_parallel,
-        workers =config.train_workers
+        parallel=config.train_parallel, workers=config.train_workers
     )
 
     model = tp.LDAModel(k=config.nr_of_motifs, **model_parameters)
     for document in documents:
         model.add_doc(document)
 
-    warnings.filterwarnings("ignore", message="The training result may differ even with fixed seed if `workers` != 1.", category=RuntimeWarning)
+    warnings.filterwarnings(
+        "ignore",
+        message="The training result may differ even with fixed seed if `workers` != 1.",
+        category=RuntimeWarning,
+    )
 
     for i in tqdm(range(0, config.iterations, config.conv_step_size)):
-        model.train(config.conv_step_size, **train_parameters)  # model is doing x amount (step size) of iterations
+        model.train(
+            config.conv_step_size, **train_parameters
+        )  # model is doing x amount (step size) of iterations
 
-        result.perplexity_history     .append(model.perplexity)
-        result.log_likelihood_history .append(model.ll_per_word)
-        result.entropy_history_doc    .append(_calculate_document_entropy(model))
-        result.entropy_history_topic  .append(_calculate_topic_entropy(model))
+        result.perplexity_history.append(model.perplexity)
+        result.log_likelihood_history.append(model.ll_per_word)
+        result.entropy_history_doc.append(_calculate_document_entropy(model))
+        result.entropy_history_topic.append(_calculate_topic_entropy(model))
 
         if _has_model_converged(result, config):
             warnings.resetwarnings()
@@ -142,7 +172,9 @@ def _calculate_topic_entropy(model: tp.LDAModel) -> float:
     return np.mean(entropy_values)
 
 
-def _has_model_converged(convergence_history: ConvergenceResult, config: MS2LDAConfig) -> bool:
+def _has_model_converged(
+    convergence_history: ConvergenceResult, config: MS2LDAConfig
+) -> bool:
     convengence_type = config.conv_type
     history = getattr(convergence_history, convengence_type)
     window_size = config.conv_window_size
@@ -180,9 +212,11 @@ def extract_motifs(model: tp.LDAModel, config: MS2LDAConfig) -> list[Spectrum]:
     return result
 
 
-def _extract_motif(k: int, topic: list[tuple[str, float]], config: MS2LDAConfig) -> Spectrum:
-    significant_digits  = config.dataset_significant_digits
-    charge              = config.dataset_charge
+def _extract_motif(
+    k: int, topic: list[tuple[str, float]], config: MS2LDAConfig
+) -> Spectrum:
+    significant_digits = config.dataset_significant_digits
+    charge = config.dataset_charge
 
     fragments = []
 
@@ -212,13 +246,13 @@ def _extract_motif(k: int, topic: list[tuple[str, float]], config: MS2LDAConfig)
     accuracy = (1 / (10**significant_digits)) / 2
 
     metadata = dict(id=m2m_id, charge=charge, accuracy=accuracy)
-    
+
     if len(fragments) == 0:
         return Spectrum(np.array([]), np.array([]), metadata)
-    
+
     mz = [x[0] for x in fragments]
     intensities = [x[1] for x in fragments]
-    
+
     max_intensity = max(intensities)
     normalized_intensities = [intensity / max_intensity for intensity in intensities]
 
@@ -237,4 +271,3 @@ def load_model(path: Path | str) -> tp.LDAModel:
     path = Path(path)
     model = tp.LDAModel.load(str(path))
     return model
-

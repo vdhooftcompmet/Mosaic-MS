@@ -1,8 +1,9 @@
 import shutil
-import yaml
-from pathlib import Path
 from argparse import Namespace
 from datetime import datetime
+from pathlib import Path
+
+import yaml
 
 
 def load_params(path) -> Namespace:
@@ -30,7 +31,7 @@ def prepare_directory(base_dir, overwrite=False, copy=True):
     else:
         os.makedirs(base_dir)
         return base_dir
-    
+
 
 def save_config(args: Namespace, base_dir: str | Path, name="config.yaml"):
     config = vars(args).copy()
@@ -47,12 +48,14 @@ def save_config(args: Namespace, base_dir: str | Path, name="config.yaml"):
 
 def get_params(parser, defaults):
     cli_params = parser.parse_args()
-    cli_params = Namespace( **{k: v for k, v in vars(cli_params).items() if v is not None} )
+    cli_params = Namespace(
+        **{k: v for k, v in vars(cli_params).items() if v is not None}
+    )
 
     with open(defaults, "r") as f:
         params = yaml.safe_load(f)
     default_params = Namespace(**params)
-    return Namespace( **( vars(default_params) | vars(cli_params)))
+    return Namespace(**(vars(default_params) | vars(cli_params)))
 
 
 def join_params(*all_params):
@@ -61,7 +64,7 @@ def join_params(*all_params):
         params = read_params(x)
 
         arg_dict |= dict(vars(params))
-        
+
     return Namespace(**arg_dict)
 
 
@@ -72,14 +75,13 @@ def read_params(params: str | dict | Namespace | None):
         return Namespace(**params)
     if isinstance(params, Namespace):
         return params
-    
+
     if not isinstance(params, str):
         raise TypeError(f"{params = }")
-    
+
     if params.endswith(".yaml") or params.endswith(".yml"):
         with open(params, "r") as f:
             content = yaml.safe_load(f)
             return Namespace(**content)
-        
+
     raise ValueError(f"{params = }")
-    

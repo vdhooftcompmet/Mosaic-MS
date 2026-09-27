@@ -1,14 +1,15 @@
 import json
-from tqdm import tqdm
-from matchms.importing import load_from_mgf
+
 from matchms.exporting import save_as_mgf
 from matchms.filtering import derive_ionmode
+from matchms.importing import load_from_mgf
 from rdkit import Chem
 from rdkit.Chem import Descriptors
+from tqdm import tqdm
 
 
 def extract_positive_mode(input_file, output_file):
-    spectra = load_from_mgf( str(input_file) )
+    spectra = load_from_mgf(str(input_file))
 
     result = []
     for spectrum in tqdm(spectra):
@@ -21,7 +22,9 @@ def extract_positive_mode(input_file, output_file):
     print("saved")
 
 
-def create_databse_intersection_mgf(spectral_database_mgf, strucuture_database_jsonl, output_file, add_missing=True):
+def create_databse_intersection_mgf(
+    spectral_database_mgf, strucuture_database_jsonl, output_file, add_missing=True
+):
     result = []
 
     print("calculating structure inchikeys...")
@@ -39,12 +42,11 @@ def create_databse_intersection_mgf(spectral_database_mgf, strucuture_database_j
 
 
 def sdf_to_structure_db(input_sdf, output_jsonl):
-    suppl = Chem.SDMolSupplier( str(input_sdf) )
+    suppl = Chem.SDMolSupplier(str(input_sdf))
     seen = set()
 
-    with open( str(output_jsonl), "w", encoding="utf-8") as f:
+    with open(str(output_jsonl), "w", encoding="utf-8") as f:
         for mol in tqdm(suppl):
-
             if not mol:
                 continue
 
@@ -58,7 +60,7 @@ def sdf_to_structure_db(input_sdf, output_jsonl):
             record = {
                 "smiles": Chem.MolToSmiles(mol),
                 "neutral_mass": Descriptors.ExactMolWt(mol),
-                "inchikey": inchi_key
+                "inchikey": inchi_key,
             }
             f.write(json.dumps(record) + "\n")
 
@@ -81,7 +83,7 @@ def get_structure_db_inchikeys(strucuture_database_jsonl):
 
 
 def read_structural_db(strucuture_database_jsonl):
-    with open(strucuture_database_jsonl, 'r') as f:
+    with open(strucuture_database_jsonl, "r") as f:
         for i, line in enumerate(f):
             try:
                 data = json.loads(line)
@@ -94,7 +96,7 @@ def read_structural_db(strucuture_database_jsonl):
 
 def set_spectral_db_inchikeys(spectral_database_mgf):
     result = []
-    spectra = load_from_mgf( str(spectral_database_mgf) )
+    spectra = load_from_mgf(str(spectral_database_mgf))
 
     for spectrum in tqdm(spectra):
         inchi_key = spectrum.get("inchikey")
@@ -114,9 +116,10 @@ def set_spectral_db_inchikeys(spectral_database_mgf):
 
 def chache_smiles(fn):
     cache = {}
+
     def inner(smiles):
         if smiles not in cache:
-           cache[smiles] = fn(smiles)
+            cache[smiles] = fn(smiles)
         return cache[smiles]
 
     return inner

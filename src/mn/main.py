@@ -1,14 +1,21 @@
-from scipy.sparse import save_npz, load_npz, csr_matrix
-from mn.mn import calculate_bootstrapping, plain_similarity, run_networking, add_cluster_numbering
-from utils.folders import prepare_directory
-from setup.paths import MN_STYLE_FILE
 import hashlib
-from matchms.importing import load_from_mgf
-from matchms import SpectrumProcessor
-from utils.cx import write_cx
-from matchms.filtering.default_pipelines import DEFAULT_FILTERS, CLEAN_PEAKS
-from utils.configs import MNConfig
 from pathlib import Path
+
+from matchms import SpectrumProcessor
+from matchms.filtering.default_pipelines import CLEAN_PEAKS, DEFAULT_FILTERS
+from matchms.importing import load_from_mgf
+from scipy.sparse import csr_matrix, load_npz, save_npz
+
+from mn.mn import (
+    add_cluster_numbering,
+    calculate_bootstrapping,
+    plain_similarity,
+    run_networking,
+)
+from setup.paths import MN_STYLE_FILE
+from utils.configs import MNConfig
+from utils.cx import write_cx
+from utils.folders import prepare_directory
 
 
 def main(config: MNConfig) -> None:
@@ -19,13 +26,12 @@ def main(config: MNConfig) -> None:
     similarity, support = _similarity_cache(calculate_bootstrapping)(spectra, config)
 
     file_names = {
-        "base"      : config.base_graph_path,
-        "threshold" : config.threshold_graph_path,
-        "rescued"   : config.rescued_graph_path,
+        "base": config.base_graph_path,
+        "threshold": config.threshold_graph_path,
+        "rescued": config.rescued_graph_path,
     }
 
     for graph_type, file_name in file_names.items():
-
         graph = run_networking(spectra, similarity, support, graph_type, config)
         add_cluster_numbering(graph)
 
@@ -36,7 +42,9 @@ def _similarity_cache(fn):
     def inner(spectra, config: MNConfig):
         files = {}
         for file_type in ["avg_sim", "tot_sim", "tot_sup"]:
-            files[file_type] = Path(config.cache_folder) / _make_cache_name(file_type, config)
+            files[file_type] = Path(config.cache_folder) / _make_cache_name(
+                file_type, config
+            )
 
         if all(f.exists() for f in files.values()):
             data = {data_type: load_npz(f).toarray() for data_type, f in files.items()}
@@ -62,13 +70,13 @@ def _make_cache_name(file_type: str, config: MNConfig) -> str:
     hasher = hashlib.sha256()
 
     with open(str(config.mgf), "rb") as f:
-        while chunk := f.read(65536): 
+        while chunk := f.read(65536):
             hasher.update(chunk)
 
     hasher.update(str(config.similarity_type).lower().encode("utf-8"))
-    hasher.update(str(file_type)             .lower().encode("utf-8"))
-    hasher.update(str(config.B)              .lower().encode("utf-8"))
-    hasher.update(str(config.seed)           .lower().encode("utf-8"))
+    hasher.update(str(file_type).lower().encode("utf-8"))
+    hasher.update(str(config.B).lower().encode("utf-8"))
+    hasher.update(str(config.seed).lower().encode("utf-8"))
     hexadecimal_string = hasher.hexdigest()
     file_name = f"{config.similarity_type}-{hexadecimal_string[:20]}.npz"
     return file_name
@@ -85,6 +93,3 @@ def clean_mgf(path: Path | str):
         spectrum.set("spectrum_id", i)
 
     return result
-        
-
-

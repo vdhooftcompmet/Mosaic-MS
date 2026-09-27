@@ -1,10 +1,12 @@
-import pandas as pd
-import networkx as nx
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
+
+import networkx as nx
 import numpy as np
+import pandas as pd
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
+
 from utils.configs import SNAPMSConfig
 
 
@@ -20,13 +22,13 @@ def import_atlas(config: SNAPMSConfig):
 
 
 ADDUCT_DICT = {
-     "m_plus_h"           : "[M+H]+"     ,  
-     "m_plus_na"          : "[M+Na]+"    , 
-     "m_plus_nh4"         : "[M+NH4]+"   , 
-     "m_plus_h_minus_h2o" : "[M-H2O+H]+" , 
-     "m_plus_k"           : "[M+K]+"     , 
-     "2m_plus_h"          : "[2M+H]+"    , 
-     "2m_plus_na"         : "[2M+Na]+"   , 
+    "m_plus_h": "[M+H]+",
+    "m_plus_na": "[M+Na]+",
+    "m_plus_nh4": "[M+NH4]+",
+    "m_plus_h_minus_h2o": "[M-H2O+H]+",
+    "m_plus_k": "[M+K]+",
+    "2m_plus_h": "[2M+H]+",
+    "2m_plus_na": "[2M+Na]+",
 }
 
 
@@ -34,24 +36,24 @@ def derive_neutral_mass(precursor_mz, adduct):
     if adduct in ADDUCT_DICT:
         adduct = ADDUCT_DICT[adduct]
 
-    C  = 12.011
-    H  = 1.0080
-    O  = 15.999
-    N  = 14.007
+    C = 12.011
+    H = 1.0080
+    O = 15.999
+    N = 14.007
     Na = 22.989218
     Ca = 40.078
-    K  = 38.963158
+    K = 38.963158
     IsoProp = 60.09
-    
+
     match adduct:
         case "[M+H]+":
             return precursor_mz - H
         case "[M+Na]+":
             return precursor_mz - Na
         case "[M+NH4]+":
-            return precursor_mz - N - H*4
+            return precursor_mz - N - H * 4
         case "[M-H2O+H]+":
-            return precursor_mz + (H*2 + O) - H
+            return precursor_mz + (H * 2 + O) - H
         case "[M+K]+":
             return precursor_mz - K
         case "[2M+H]+":
@@ -59,52 +61,52 @@ def derive_neutral_mass(precursor_mz, adduct):
         case "[2M+Na]+":
             return (precursor_mz - Na) / 2
         case "[M+H+H]2+":
-            return (precursor_mz * 2) - H*2
+            return (precursor_mz * 2) - H * 2
         case "[M-2H2O+H]+":
-            return precursor_mz + (H*2 + O*2) - H
+            return precursor_mz + (H * 2 + O * 2) - H
         case "[M]+":
             return precursor_mz
         case "[M-H2O]+":
-            return precursor_mz + (H*2 + O)
+            return precursor_mz + (H * 2 + O)
         case "[M+H-H2O]+":
-            return precursor_mz + (H*2 + O) - H
+            return precursor_mz + (H * 2 + O) - H
         case "[M+H-2H2O]+":
-            return precursor_mz + (H*2 + O*2) - H
+            return precursor_mz + (H * 2 + O * 2) - H
         case "[M+NH3+H]+":
-            return precursor_mz - (N + H*3) - H
+            return precursor_mz - (N + H * 3) - H
         case "[M+2H]2+":
-            return (precursor_mz * 2) - (H*2)
+            return (precursor_mz * 2) - (H * 2)
         case "[M+CH3CN+H]+":
-            return precursor_mz - (C + H*3 + C + N)
+            return precursor_mz - (C + H * 3 + C + N)
         case "[2M-2H2O+H]+":
-            return (precursor_mz - (H*2 + O*2) - H ) / 2
+            return (precursor_mz - (H * 2 + O * 2) - H) / 2
         case "[2M+Ca]2+":
-            return ((precursor_mz * 2) - Ca ) / 2
+            return ((precursor_mz * 2) - Ca) / 2
         case "[M+CH3OH+H]+":
-            return precursor_mz - (C + H*3 + O + H) + H
+            return precursor_mz - (C + H * 3 + O + H) + H
         case "[M+2Na]2+":
-            return (precursor_mz * 2) - (Na*2)
+            return (precursor_mz * 2) - (Na * 2)
         case "[M+Ca]2+":
             return (precursor_mz * 2) - Ca
         case "[M+2Na-H]+":
-            return precursor_mz - (Na*2) - H
+            return precursor_mz - (Na * 2) - H
         case "[2M+NH3+H]+":
-            return (precursor_mz - (N + H*3) - H ) / 2
+            return (precursor_mz - (N + H * 3) - H) / 2
         case "[M+IsoProp+H]+":
             return precursor_mz - IsoProp - H
         case "[3M+Ca]2+":
-            return ((precursor_mz * 2) - Ca ) / 3
+            return ((precursor_mz * 2) - Ca) / 3
         case "[2M-H2O+H]+":
-            return (precursor_mz + (H*2 + O) - H) / 2
+            return (precursor_mz + (H * 2 + O) - H) / 2
         case "[M+2K-H]+":
-            return precursor_mz - (K*2) + H
+            return precursor_mz - (K * 2) + H
         case "[2M+K]+":
             return (precursor_mz - K) / 2
         case "[M+H+NH4]2+":
-            return (precursor_mz * 2) - H - (N + H*4)
+            return (precursor_mz * 2) - H - (N + H * 4)
         case "[M-3H2O+H]+":
-            return precursor_mz - H + 3*(H*2 + O)
-        
+            return precursor_mz - H + 3 * (H * 2 + O)
+
     raise ValueError("Adduct not recognized")
 
 
@@ -114,30 +116,33 @@ ADDUCT_ALIASES = ["adduct", "ion"]
 def get_adducts(mn, node, config: SNAPMSConfig):
     if not config.detect_adduct:
         return config.adduct_list
-    
-    for adduct_key in ADDUCT_ALIASES:
 
+    for adduct_key in ADDUCT_ALIASES:
         if adduct_key not in mn.nodes[node]:
             continue
 
-        return list(set( [mn.nodes[node][adduct_key]] + config.adduct_list ))
+        return list(set([mn.nodes[node][adduct_key]] + config.adduct_list))
 
-    print(f"WARNING: no adduct found, relying on default adducts... {mn.nodes[node] = }")
+    print(
+        f"WARNING: no adduct found, relying on default adducts... {mn.nodes[node] = }"
+    )
     return config.adduct_list
 
 
 # DATABASE MATCHING
-def compute_adduct_matches(mn, nodes: dict, config: SNAPMSConfig, db_df: pd.DataFrame) -> list[dict]:
+def compute_adduct_matches(
+    mn, nodes: dict, config: SNAPMSConfig, db_df: pd.DataFrame
+) -> list[dict]:
     result = []
 
     for node in nodes:
-
         for adduct in get_adducts(mn, node, config):
-
             try:
                 precursor_mass = float(mn.nodes[node]["precursor_mz"])
             except KeyError:
-                print(f"WARNING: precursor mass not found {mn.nodes[node] = }, ignoring this mass...")
+                print(
+                    f"WARNING: precursor mass not found {mn.nodes[node] = }, ignoring this mass..."
+                )
                 continue
 
             try:
@@ -152,18 +157,22 @@ def compute_adduct_matches(mn, nodes: dict, config: SNAPMSConfig, db_df: pd.Data
                 motifs = ""
 
             mass_error = round((neutral_mass * config.ppm_error) / 1e6, 4)
-            
-            mask       = db_df["neutral_mass"].between(neutral_mass - mass_error, neutral_mass + mass_error)
+
+            mask = db_df["neutral_mass"].between(
+                neutral_mass - mass_error, neutral_mass + mass_error
+            )
             db_matches = db_df[mask]
 
-            if db_matches.empty: 
+            if db_matches.empty:
                 continue
 
-            db_matches = db_matches[["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]]
+            db_matches = db_matches[
+                ["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]
+            ]
 
-            db_matches["mn_node_id"]      = node
-            db_matches["adduct"]          = adduct
-            db_matches["motifs"]            = motifs
+            db_matches["mn_node_id"] = node
+            db_matches["adduct"] = adduct
+            db_matches["motifs"] = motifs
 
             result += list(db_matches.to_dict(orient="records"))
 
@@ -171,7 +180,7 @@ def compute_adduct_matches(mn, nodes: dict, config: SNAPMSConfig, db_df: pd.Data
 
 
 def merge_duplicates(matches: list[dict]):
-    
+
     duplicates = defaultdict(list)
     parent_nodes = set()
 
@@ -213,7 +222,7 @@ def group_by_property(graph: nx.Graph, key_property: str | int) -> dict[dict]:
         if key in groups:
             groups[key] |= {name: metadata}
         else:
-            groups[key] =  {name: metadata}
+            groups[key] = {name: metadata}
 
     return groups
 
@@ -242,7 +251,9 @@ def get_edges(matches: list[dict], cutoff=0.66) -> list[tuple[int, int]]:
 
     dice_matrix = np.zeros(shape=(len(matches), len(matches)))
     for i, fp in enumerate(fingerprints):
-        dice_matrix[i, i+1:] = DataStructs.BulkDiceSimilarity(fp, fingerprints[i+1:])
+        dice_matrix[i, i + 1 :] = DataStructs.BulkDiceSimilarity(
+            fp, fingerprints[i + 1 :]
+        )
 
     rows, cols = np.where(np.triu(dice_matrix, k=1) > cutoff)
 
@@ -273,14 +284,14 @@ def remove_small_subgraphs(graph: nx.Graph, config: SNAPMSConfig):
 
 def add_top_candidate_annotation(graph: nx.Graph) -> None:
     clusters = [x for x in nx.connected_components(graph)]
-    counts   = [_nr_of_unique_compounds(graph, c, "mn_node_id") for c in clusters]
+    counts = [_nr_of_unique_compounds(graph, c, "mn_node_id") for c in clusters]
 
     for c, nodes in zip(counts, clusters):
         for node in nodes:
             if max(counts) <= 2:
                 graph.nodes[node]["is_top_candidate"] = False
             else:
-                graph.nodes[node]["is_top_candidate"] = (c == max(counts))
+                graph.nodes[node]["is_top_candidate"] = c == max(counts)
 
             graph.nodes[node]["ann_mass_diversity"] = c
 
@@ -291,7 +302,9 @@ def _nr_of_unique_compounds(graph: nx.Graph, nodes: set, key: str) -> int:
 
 
 def add_cluster_numbering(graph: nx.Graph):
-    ordered_clusters = sorted(nx.connected_components(graph), key=lambda x: len(x), reverse=True)
+    ordered_clusters = sorted(
+        nx.connected_components(graph), key=lambda x: len(x), reverse=True
+    )
     for cluster in ordered_clusters:
         i = get_unique_id()
         for node in cluster:

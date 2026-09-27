@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 import tomotopy as tp
 from matchms import Spectrum
-import matchms.filtering as msfilters
 
 # Assuming ms2lda.py and utils/configs.py are in your python path
 from ms2lda.ms2lda import (
@@ -24,8 +23,8 @@ from ms2lda.ms2lda import (
 )
 from utils.configs import MS2LDAConfig
 
-
 # --- Fixtures ---
+
 
 @pytest.fixture
 def mock_config():
@@ -83,6 +82,7 @@ def dummy_documents():
 
 
 # --- Tests for New Preprocessing & Document Functions ---
+
 
 @patch("ms2lda.ms2lda.msfilters")
 def test_clean_spectra(mock_msfilters, mock_config, sample_spectrum):
@@ -145,6 +145,7 @@ def test_spectra_to_documents_invalid_acquisition_type(mock_config, sample_spect
 
 # --- Entropy Calculation Tests ---
 
+
 def test_calculate_document_entropy():
     mock_model = MagicMock(spec=tp.LDAModel)
     doc1 = MagicMock()
@@ -174,6 +175,7 @@ def test_calculate_topic_entropy():
 
 
 # --- Convergence Tests ---
+
 
 def test_has_model_converged_true(mock_config):
     mock_config.conv_type = "perplexity_history"
@@ -205,6 +207,7 @@ def test_has_model_converged_handles_zero_values(mock_config):
 
 # --- Train Model Tests ---
 
+
 def test_train_model_runs_and_converges(mock_config, dummy_documents):
     model, result = train_model(dummy_documents, mock_config)
 
@@ -215,7 +218,9 @@ def test_train_model_runs_and_converges(mock_config, dummy_documents):
 
 
 @patch("ms2lda.ms2lda._has_model_converged", return_value=False)
-def test_train_model_warns_on_non_convergence(mock_has_converged, mock_config, dummy_documents, capsys):
+def test_train_model_warns_on_non_convergence(
+    mock_has_converged, mock_config, dummy_documents, capsys
+):
     model, result = train_model(dummy_documents, mock_config)
 
     captured = capsys.readouterr()
@@ -223,6 +228,7 @@ def test_train_model_warns_on_non_convergence(mock_has_converged, mock_config, d
 
 
 # --- Motif Extraction Tests ---
+
 
 def test_extract_motif_valid(mock_config):
     topic = [("frag@100.555", 10.0), ("loss@50.222", 5.0)]
@@ -258,6 +264,7 @@ def test_extract_motifs_integration(mock_config):
 
 
 # --- File Persistence Tests ---
+
 
 def test_store_model_and_load_model(tmp_path: Path):
     model_path = tmp_path / "lda_test.bin"

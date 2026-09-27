@@ -1,15 +1,24 @@
-import networkx as nx
-from tqdm import tqdm
 from collections import defaultdict
 from pathlib import Path
-from utils.folders import prepare_directory
-from utils.cx import read_cx, write_cx
+
+import networkx as nx
+from tqdm import tqdm
+
 from setup.paths import ANNOTATION_STYLE_FILE
 from snapms.snapms import (
-    import_atlas, compute_adduct_matches, merge_duplicates, get_edges,
-    remove_edges_with_same_value_for, remove_self_similar_vals,
-    remove_small_subgraphs, add_cluster_numbering, add_top_candidate_annotation)
+    add_cluster_numbering,
+    add_top_candidate_annotation,
+    compute_adduct_matches,
+    get_edges,
+    import_atlas,
+    merge_duplicates,
+    remove_edges_with_same_value_for,
+    remove_self_similar_vals,
+    remove_small_subgraphs,
+)
 from utils.configs import SNAPMSConfig
+from utils.cx import read_cx, write_cx
+from utils.folders import prepare_directory
 
 
 def main(config: SNAPMSConfig):
@@ -35,13 +44,19 @@ def main(config: SNAPMSConfig):
             continue
 
         matches = compute_adduct_matches(mn, nodes, config, atlas_df)
-        matches = merge_duplicates(matches)  # nodes with the same or very similar masses lead to multiple copies of compounds, here we merge them into one
+        matches = merge_duplicates(
+            matches
+        )  # nodes with the same or very similar masses lead to multiple copies of compounds, here we merge them into one
 
         edges = get_edges(matches, cutoff=config.cutoff)
-        edges = remove_self_similar_vals(edges)  # makes sure nodes aren't connected to themselves
-        edges = remove_edges_with_same_value_for(edges, matches, "mn_node_id")  # snapms logic dictates compounds from the same origin node cannot connect to each other
+        edges = remove_self_similar_vals(
+            edges
+        )  # makes sure nodes aren't connected to themselves
+        edges = remove_edges_with_same_value_for(
+            edges, matches, "mn_node_id"
+        )  # snapms logic dictates compounds from the same origin node cannot connect to each other
 
-        graph  = nx.Graph()
+        graph = nx.Graph()
         graph.add_nodes_from((i, match) for i, match in enumerate(matches))
         graph.add_edges_from(edges)
 

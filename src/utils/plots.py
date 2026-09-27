@@ -1,16 +1,23 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-plt.rcParams['svg.fonttype'] = 'none'
-plt.rcParams['figure.autolayout'] = False
+plt.rcParams["svg.fonttype"] = "none"
+plt.rcParams["figure.autolayout"] = False
+
+from typing import Any
 
 import matplotlib.patheffects as pe
+from matchms import Fragments, Spectrum
 from matplotlib.axes import Axes
-from typing import Any
-from matchms import Spectrum, Fragments
 
 
-def comparison_plot(references: list | Spectrum | None = None, spectra: list | Spectrum | None = None, scale: float = 1.6, threshold=0.005, top_n=35) -> list[Axes]:
+def comparison_plot(
+    references: list | Spectrum | None = None,
+    spectra: list | Spectrum | None = None,
+    scale: float = 1.6,
+    threshold=0.005,
+    top_n=35,
+) -> list[Axes]:
     if references is None:
         references = []
 
@@ -24,7 +31,7 @@ def comparison_plot(references: list | Spectrum | None = None, spectra: list | S
         spectra = [spectra]
 
     references = [add_losses(r) for r in references]
-    spectra    = [add_losses(s) for s in spectra]
+    spectra = [add_losses(s) for s in spectra]
 
     peak_values = [s.peaks.mz for s in spectra + references]
     peak_values = np.concatenate(peak_values)
@@ -41,36 +48,64 @@ def comparison_plot(references: list | Spectrum | None = None, spectra: list | S
     min_mz = min_mz - 0.05 * mz_range
     max_mz = max_mz + 0.05 * mz_range
 
-    colors = ["black"] + plt.rcParams['axes.prop_cycle'].by_key()['color'][1:]
+    colors = ["black"] + plt.rcParams["axes.prop_cycle"].by_key()["color"][1:]
 
-    reference_axes = plot_references(references, colors, min_mz, max_mz, scale, threshold, top_n)
-    spectra_axes = plot_spectra(spectra, references, colors, min_mz, max_mz, scale, threshold, top_n)
+    reference_axes = plot_references(
+        references, colors, min_mz, max_mz, scale, threshold, top_n
+    )
+    spectra_axes = plot_spectra(
+        spectra, references, colors, min_mz, max_mz, scale, threshold, top_n
+    )
 
     return reference_axes + spectra_axes
 
 
-def plot_references(references: list[Spectrum], colors: Any, min_mz: float, max_mz: float, scale: float, threshold, top_n) -> Axes:
+def plot_references(
+    references: list[Spectrum],
+    colors: Any,
+    min_mz: float,
+    max_mz: float,
+    scale: float,
+    threshold,
+    top_n,
+) -> Axes:
     axes = []
 
     for spectrum, color in zip(references, colors):
-
         mz = np.round(spectrum.peaks.mz, 2)
         peak_colors = np.array([color for _ in range(mz.size)])
         ax = create_plot_grid(min_mz, max_mz, scale)
-        plot_features(ax, mz, spectrum.peaks.intensities, peak_colors=peak_colors, title=str(spectrum.get("id")), threshold=threshold, top_n=top_n)
+        plot_features(
+            ax,
+            mz,
+            spectrum.peaks.intensities,
+            peak_colors=peak_colors,
+            title=str(spectrum.get("id")),
+            threshold=threshold,
+            top_n=top_n,
+        )
 
         axes.append(ax)
 
     return axes
 
 
-def plot_spectra(spectra: list[Spectrum], references: list[Spectrum], colors: Any, min_mz: float, max_mz: float, scale: float, threshold, top_n) -> Axes:
+def plot_spectra(
+    spectra: list[Spectrum],
+    references: list[Spectrum],
+    colors: Any,
+    min_mz: float,
+    max_mz: float,
+    scale: float,
+    threshold,
+    top_n,
+) -> Axes:
     axes = []
 
     for spectrum in spectra:
         mz = spectrum.peaks.mz
         intensities = spectrum.peaks.intensities
-        
+
         peak_colors = np.array(["black" for _ in mz], dtype=object)
 
         for reference, color in zip(references, colors):
@@ -82,7 +117,15 @@ def plot_spectra(spectra: list[Spectrum], references: list[Spectrum], colors: An
             peak_colors[intersection] = color
 
         ax = create_plot_grid(min_mz, max_mz, scale)
-        plot_features(ax, mz, intensities, peak_colors=peak_colors, title="spectrum " + str(spectrum.get("spectrum_id")), threshold=threshold, top_n=top_n)
+        plot_features(
+            ax,
+            mz,
+            intensities,
+            peak_colors=peak_colors,
+            title="spectrum " + str(spectrum.get("spectrum_id")),
+            threshold=threshold,
+            top_n=top_n,
+        )
 
         axes.append(ax)
 
@@ -97,13 +140,13 @@ def add_losses(spectrum: Spectrum) -> Spectrum:
 
     if precursor_mz is None:
         return spectrum
-    
-    # remove peaks larger than precursor mz 
+
+    # remove peaks larger than precursor mz
     valid_peak_indices = spectrum.peaks.mz <= precursor_mz
 
     peaks_mz = spectrum.peaks.mz[valid_peak_indices]
     peaks_intensities = spectrum.peaks.intensities[valid_peak_indices]
-    
+
     # compute losses
     losses_mz = peaks_mz - precursor_mz
     losses_intensities = peaks_intensities
@@ -116,59 +159,65 @@ def add_losses(spectrum: Spectrum) -> Spectrum:
     spectrum.peaks = peaks
 
     return spectrum
-    
 
-def plot_features(ax, mz, intensities, peak_colors, title="", threshold=0.005, top_n=35) -> None:
+
+def plot_features(
+    ax, mz, intensities, peak_colors, title="", threshold=0.005, top_n=35
+) -> None:
     ax.vlines(mz, ymin=0, ymax=intensities, colors=peak_colors, linewidth=1.0, zorder=5)
     ax.set_title(title)
 
-    valid_mzs, valid_intensities, valid_peak_colors = filter_labels(mz, intensities, peak_colors, threshold, top_n)
+    valid_mzs, valid_intensities, valid_peak_colors = filter_labels(
+        mz, intensities, peak_colors, threshold, top_n
+    )
 
     x_min, x_max = ax.get_xlim()
-    if x_min == 0.0 and x_max == 1.0: 
+    if x_min == 0.0 and x_max == 1.0:
         x_min, x_max = np.min(mz), np.max(mz)
-    
-    min_gap = (x_max - x_min) * 0.015  
+
+    min_gap = (x_max - x_min) * 0.015
 
     adjusted_mzs = valid_mzs.copy()
     for i in range(1, len(adjusted_mzs)):
-        if adjusted_mzs[i] - adjusted_mzs[i-1] >= min_gap:
+        if adjusted_mzs[i] - adjusted_mzs[i - 1] >= min_gap:
             continue
-        adjusted_mzs[i] = adjusted_mzs[i-1] + min_gap
+        adjusted_mzs[i] = adjusted_mzs[i - 1] + min_gap
 
     path_effects = [pe.withStroke(linewidth=2, foreground="white")]
 
-    for original_mz, intensity, shifted_mz, peak_color in zip(valid_mzs, valid_intensities, adjusted_mzs, valid_peak_colors):
+    for original_mz, intensity, shifted_mz, peak_color in zip(
+        valid_mzs, valid_intensities, adjusted_mzs, valid_peak_colors
+    ):
         arrow_props = dict(
             arrowstyle="-",
             color=peak_color,
             lw=0.5,
             shrinkA=0,
             shrinkB=0,
-            connectionstyle="arc3,rad=0"
+            connectionstyle="arc3,rad=0",
         )
         ax.annotate(
-            "", 
-            xy=(original_mz, 0.0),      
-            xytext=(shifted_mz, -12),    
+            "",
+            xy=(original_mz, 0.0),
+            xytext=(shifted_mz, -12),
             xycoords="data",
             textcoords=("data", "offset points"),
             arrowprops=arrow_props,
-            annotation_clip=False
-        ) 
+            annotation_clip=False,
+        )
         ax.annotate(
             f"{original_mz:.4f} : {intensity:.2f}",
-            xy=(shifted_mz, 0.0),                  
-            xytext=(0, -14),                       
-            xycoords="data",                       
-            textcoords="offset points",            
+            xy=(shifted_mz, 0.0),
+            xytext=(0, -14),
+            xycoords="data",
+            textcoords="offset points",
             rotation=90,
             fontsize=5,
             color=peak_color,
-            ha="center", 
-            va="top",    
+            ha="center",
+            va="top",
             path_effects=path_effects,
-            annotation_clip=False
+            annotation_clip=False,
         )
 
 
@@ -182,7 +231,6 @@ def top_indexes(arr, threshold, top_n):
     else:
         top_subset_sorted_idx = np.argsort(valid_values)[-top_n:][::-1]
         return valid_indices[top_subset_sorted_idx]
-
 
 
 def filter_labels(mz, intensities, peak_colors, threshold, top_n):

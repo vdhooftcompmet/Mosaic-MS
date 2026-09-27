@@ -1,12 +1,13 @@
 import numpy as np
 from rdkit import Chem, DataStructs
-from rdkit.Chem import MACCSkeys, RDKFingerprint, AllChem
-from rdkit.DataStructs.cDataStructs import ExplicitBitVect
+from rdkit.Chem import AllChem, MACCSkeys, RDKFingerprint, rdFingerprintGenerator
 from rdkit.DataStructs import BulkDiceSimilarity
-from rdkit.Chem import rdFingerprintGenerator
+from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
 
-def similarity_matrix(smiles1: list[str], smiles2: list[str], fingerprint: str, matrix: str):
+def similarity_matrix(
+    smiles1: list[str], smiles2: list[str], fingerprint: str, matrix: str
+):
     fp1 = smiles_to_fingerprints(smiles1, fingerprint)
     fp2 = smiles_to_fingerprints(smiles2, fingerprint)
     mtrx = get_matrix(fp1, fp2, matrix)
@@ -15,10 +16,12 @@ def similarity_matrix(smiles1: list[str], smiles2: list[str], fingerprint: str, 
 
 def cache(fn):
     fn_cache = {}
+
     def inner(smile, *args, **kwargs):
         if smile not in fn_cache:
             fn_cache[smile] = fn(smile, *args, **kwargs)
         return fn_cache[smile]
+
     return inner
 
 
@@ -29,14 +32,17 @@ def get_morgan_generator(radius=2, n_bits=2048):
     global MORGAN_GENERATORS
     key = radius, n_bits
     if key not in MORGAN_GENERATORS:
-        MORGAN_GENERATORS[key] = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=n_bits)
+        MORGAN_GENERATORS[key] = rdFingerprintGenerator.GetMorganGenerator(
+            radius=radius, fpSize=n_bits
+        )
     return MORGAN_GENERATORS[key]
+
 
 @cache
 def smile_to_morgan_fp(smile, radius=2, n_bits=2048):
     mol = Chem.MolFromSmiles(smile)
     mfpgen = get_morgan_generator(radius=radius, n_bits=n_bits)
-    fp = mfpgen.GetCountFingerprint(mol) 
+    fp = mfpgen.GetCountFingerprint(mol)
     return fp
 
 
@@ -72,7 +78,9 @@ def fp_dice_similarity(fingerprints1, fingerprints2) -> np.ndarray:
     return sim_matrix
 
 
-def smiles_to_fingerprints(smiles: list[str], selected_fp_type: str) -> list[ExplicitBitVect]:
+def smiles_to_fingerprints(
+    smiles: list[str], selected_fp_type: str
+) -> list[ExplicitBitVect]:
     match selected_fp_type.lower():
         case "maccs":
             return [smile_to_maccs_fp(s) for s in smiles]

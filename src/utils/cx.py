@@ -1,26 +1,28 @@
-import networkx as nx
-import ndex2
-import json
 import contextlib
-from utils.constants import *
-from pathlib import Path
-from tqdm import tqdm
+import json
 import os
+from pathlib import Path
+
+import ndex2
+import networkx as nx
+from tqdm import tqdm
+
+from utils.constants import *
 
 
 def read_cx(file):
     file = str(file)
     # Load into the 'Nice' wrapper
     nice_cx = ndex2.create_nice_cx_from_file(file)
-    
+
     # Use 'default' mode to ensure attributes are carried over correctly
     # and MultiDiGraph to prevent losing parallel edges
-    graph = nice_cx.to_networkx(mode='default')
-    
+    graph = nice_cx.to_networkx(mode="default")
+
     # Optional: Fix node labels if they are stored in the 'n' attribute
     # but NetworkX used the internal ID as the node name
     if all(isinstance(n, int) for n in graph.nodes):
-        mapping = {n: graph.nodes[n].get('n', n) for n in graph.nodes}
+        mapping = {n: graph.nodes[n].get("n", n) for n in graph.nodes}
         graph = nx.relabel_nodes(graph, mapping)
 
     graph = graph.to_undirected()
@@ -30,7 +32,7 @@ def read_cx(file):
 def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None):
     file_path = str(file_path)
     nice_cx = ndex2.NiceCXNetwork()
-    
+
     # 1. Map NetworkX nodes to CX internal IDs
     # This is the most common reason for 'missing edges'
     node_name_to_id = {}
@@ -47,7 +49,7 @@ def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None):
     for source, target, metadata in graph.edges(data=True):
         s_id = node_name_to_id[source]
         t_id = node_name_to_id[target]
-        
+
         edge_id = nice_cx.create_edge(edge_source=s_id, edge_target=t_id)
 
         # Add edge attributes
@@ -60,22 +62,25 @@ def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None):
         nice_cx.apply_style_from_network(style_cx)
 
     # Use the built-in uploader or manual dump
-    with open(file_path, 'w') as f:
-        with open(os.devnull, 'w') as devnull, contextlib.redirect_stdout(devnull):
+    with open(file_path, "w") as f:
+        with open(os.devnull, "w") as devnull, contextlib.redirect_stdout(devnull):
             cx_data = nice_cx.to_cx()
         json.dump(cx_data, f)
 
+
 def infer_cx_type(val):
-    if isinstance(val, bool): return "boolean"
-    if isinstance(val, int): return "integer"
-    if isinstance(val, float): return "double"
+    if isinstance(val, bool):
+        return "boolean"
+    if isinstance(val, int):
+        return "integer"
+    if isinstance(val, float):
+        return "double"
     return "string"
 
 
 def read_annotations(folder: str | Path):
     annotations, files, cluster_ids = [], [], []
     for annotation_file in tqdm(Path(folder).glob("*.cx")):
-    
         try:
             annotation = read_cx(annotation_file)
         except Exception:
@@ -85,6 +90,6 @@ def read_annotations(folder: str | Path):
         mn_cluster_id = annotation_file.stem.split("-")[1]
         cluster_ids += [mn_cluster_id]
         annotations += [annotation]
-        files       += [annotation_file]
+        files += [annotation_file]
 
     return annotations, files, cluster_ids

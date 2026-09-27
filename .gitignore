@@ -7,3 +7,4 @@ data/*
 cache
 !cache/.gitkeep
 snakemake/.snakemake
+.zed
