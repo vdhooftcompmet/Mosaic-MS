@@ -79,3 +79,6 @@ class MNConfig:
     k: int
     seed: int
     flash_tolerance: float
+
+    ms2deepscore_model_path: str = ""
+    spec2vec_model_path: str = ""
