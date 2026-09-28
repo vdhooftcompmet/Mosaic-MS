@@ -13,5 +13,5 @@ adduct_list:
 remove_duplicates: True
 detect_adduct: True
 
-reference-db: ../data/coconut_db.jsonl
-result_folder: ../results/snapms
+reference-db: data/coconut_db.jsonl
+result_folder: results/snapms

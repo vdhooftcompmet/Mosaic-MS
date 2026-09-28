@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from pathlib import Path
+
+REPO = Path(__file__).parent.parent.parent.resolve()
 
 
 @dataclass
@@ -37,6 +40,11 @@ class MS2LDAConfig:
     prep_min_intensity: float
     prep_max_intensity: float
 
+    def __post_init__(self):
+        self.mgf = str(REPO / self.mgf)
+        self.motifs_path = str(REPO / self.motifs_path)
+        self.model_path = str(REPO / self.model_path)
+
 
 @dataclass
 class SNAPMSConfig:
@@ -54,6 +62,11 @@ class SNAPMSConfig:
 
     remove_duplicates: bool
     detect_adduct: bool
+
+    def __post_init__(self):
+        self.graph = str(REPO / self.graph)
+        self.reference_db = str(REPO / self.reference_db)
+        self.result_folder = str(REPO / self.result_folder)
 
 
 @dataclass
@@ -82,3 +95,14 @@ class MNConfig:
 
     ms2deepscore_model_path: str = ""
     spec2vec_model_path: str = ""
+
+    def __post_init__(self):
+        self.mgf = str(REPO / self.mgf)
+        self.folder = str(REPO / self.folder)
+        self.cache_folder = str(REPO / self.cache_folder)
+        self.base_graph_path = str(REPO / self.base_graph_path)
+        self.threshold_graph_path = str(REPO / self.threshold_graph_path)
+        self.rescued_graph_path = str(REPO / self.rescued_graph_path)
+
+        self.ms2deepscore_model_path = str(REPO / self.ms2deepscore_model_path)
+        self.spec2vec_model_path = str(REPO / self.spec2vec_model_path)

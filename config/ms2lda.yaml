@@ -29,5 +29,5 @@ prep_min_frags: 5
 prep_min_intensity: 0.01
 prep_max_intensity: 1.0
 
-motifs_path: ../results/motifs.mgf
-model_path: ../results/model.lda
+motifs_path: results/motifs.mgf
+model_path: results/model.lda
