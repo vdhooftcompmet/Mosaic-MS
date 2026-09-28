@@ -122,7 +122,7 @@ def run_overlap_scores_calculation(
     )  # tw * wd -> td; Phi signifies the topic distribution in every doc
     phi_matrix /= (
         phi_matrix.sum(axis=0, keepdims=True) + 1e-12
-    )  # Phi is noralized for topic size to make a fair comparison
+    )  # Phi is normalized for topic size to make a fair comparison
 
     overlap_scores = phi_matrix * theta_matrix
 
