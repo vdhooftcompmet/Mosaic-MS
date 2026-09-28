@@ -154,7 +154,7 @@ def derive_significant_digits(topic_words):
             clean_num = mass_str.replace(".", "").lstrip("0")
             sig_digits.add(len(clean_num))
 
-    return max(decimal_places)
+    return max(decimal_places, default=0)
 
 
 def derive_dataset_acquisition_type(topic_words):
