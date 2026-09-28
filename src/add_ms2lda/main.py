@@ -157,7 +157,7 @@ def derive_significant_digits(topic_words):
     return max(decimal_places, default=0)
 
 
-def derive_dataset_acquisition_type(topic_words):
+def derive_dataset_acquisition_type(topic_words) -> str:
     has_losses = any(word.startswith("loss@") for word in topic_words)
 
     if has_losses:

@@ -73,7 +73,7 @@ def sample_spectra():
 # --- Spectrum Binning & Masking Tests ---
 
 
-def test_global_bins(sample_spectra):
+def test_global_bins(sample_spectra) -> None:
     bins = global_bins(sample_spectra, decimals=2)
 
     assert isinstance(bins, np.ndarray)
@@ -83,7 +83,7 @@ def test_global_bins(sample_spectra):
     assert 200.46 in bins
 
 
-def test_bin_spectra(sample_spectra):
+def test_bin_spectra(sample_spectra) -> None:
     binned = bin_spectra(sample_spectra, decimals=2)
 
     assert len(binned) == len(sample_spectra)
@@ -91,7 +91,7 @@ def test_bin_spectra(sample_spectra):
     assert binned[0].metadata["compound_name"] == "Compound A"
 
 
-def test_mask_spectra_globally(sample_spectra):
+def test_mask_spectra_globally(sample_spectra) -> None:
     bins = global_bins(sample_spectra, decimals=2)
     binned = bin_spectra(sample_spectra, decimals=2)
     rng = np.random.default_rng(42)
@@ -108,7 +108,7 @@ def test_mask_spectra_globally(sample_spectra):
 # --- Matrix Operations Tests ---
 
 
-def test_mutual_topk():
+def test_mutual_topk() -> None:
     A = np.array(
         [
             [1.0, 0.9, 0.1, 0.2],
@@ -135,12 +135,12 @@ def test_mutual_topk():
 
 
 @pytest.mark.parametrize("method_name", ["cos", "cosine", "modcos", "modified_cosine"])
-def test_get_similarity_flash(method_name, mock_config):
+def test_get_similarity_flash(method_name: str, mock_config) -> None:
     metric = get_similarity(method_name, 0.1, mock_config)
     assert metric is not None
 
 
-def test_get_similarity_ms2ds_missing_file(mock_config):
+def test_get_similarity_ms2ds_missing_file(mock_config) -> None:
     mock_config.ms2deepscore_model_path = "non_existent_file.pt"
     with pytest.raises(FileNotFoundError, match="not found"):
         get_similarity("ms2ds", 0.1, mock_config)
@@ -148,13 +148,13 @@ def test_get_similarity_ms2ds_missing_file(mock_config):
 
 @patch("mn.mn.Path.exists", return_value=True)
 @patch("mn.mn.load_model")
-def test_get_similarity_ms2ds_success(mock_load_model, mock_exists, mock_config):
+def test_get_similarity_ms2ds_success(mock_load_model, mock_exists, mock_config) -> None:
     mock_load_model.return_value = MagicMock()
     metric = get_similarity("ms2ds", 0.1, mock_config)
     assert metric is not None
 
 
-def test_get_similarity_spec2vec_missing_file(mock_config):
+def test_get_similarity_spec2vec_missing_file(mock_config) -> None:
     mock_config.spec2vec_model_path = "non_existent_file.model"
     with pytest.raises(FileNotFoundError, match="not found"):
         get_similarity("s2v", 0.1, mock_config)
@@ -162,7 +162,7 @@ def test_get_similarity_spec2vec_missing_file(mock_config):
 
 @patch("mn.mn.Path.exists", return_value=True)
 @patch("mn.mn.gensim.models.Word2Vec.load")
-def test_get_similarity_spec2vec_success(mock_w2v_load, mock_exists, mock_config):
+def test_get_similarity_spec2vec_success(mock_w2v_load, mock_exists, mock_config) -> None:
     mock_model = MagicMock()
     mock_model.wv.key_to_index = {"peak@100.12": 0}
     mock_w2v_load.return_value = mock_model
@@ -171,7 +171,7 @@ def test_get_similarity_spec2vec_success(mock_w2v_load, mock_exists, mock_config
     assert metric is not None
 
 
-def test_get_similarity_invalid_option(mock_config):
+def test_get_similarity_invalid_option(mock_config) -> None:
     with pytest.raises(ValueError, match="unknown option"):
         get_similarity("unknown_method", 0.1, mock_config)
 
@@ -179,7 +179,7 @@ def test_get_similarity_invalid_option(mock_config):
 # --- Plain Similarity & Bootstrapping Tests ---
 
 
-def test_plain_similarity(sample_spectra, mock_config):
+def test_plain_similarity(sample_spectra, mock_config) -> None:
     sim_matrix = plain_similarity(sample_spectra, mock_config)
 
     assert isinstance(sim_matrix, np.ndarray)
@@ -187,7 +187,7 @@ def test_plain_similarity(sample_spectra, mock_config):
     assert np.allclose(np.diag(sim_matrix), 1.0)
 
 
-def test_calculate_bootstrapping(sample_spectra, mock_config):
+def test_calculate_bootstrapping(sample_spectra, mock_config) -> None:
     mean_sim, mean_sup = calculate_bootstrapping(sample_spectra, mock_config)
 
     assert mean_sim.shape == (3, 3)
@@ -197,7 +197,7 @@ def test_calculate_bootstrapping(sample_spectra, mock_config):
 
 
 @patch("mn.mn.calculate_bootstrapping")
-def test_run_bootstrap(mock_calc, sample_spectra, mock_config):
+def test_run_bootstrap(mock_calc, sample_spectra, mock_config) -> None:
     mock_calc.return_value = (np.ones((3, 3)), np.zeros((3, 3)))
     sim, sup = run_bootstrap(sample_spectra, mock_config)
 
@@ -209,7 +209,7 @@ def test_run_bootstrap(mock_calc, sample_spectra, mock_config):
 # --- Edge Filtering Strategies Tests ---
 
 
-def test_filter_base_strategy():
+def test_filter_base_strategy() -> None:
     strategy = filter_base_strategy(sim_threshold=0.7)
     edge_data = EdgeData(
         u=np.array([0, 0, 1]),
@@ -224,7 +224,7 @@ def test_filter_base_strategy():
     assert list(filtered.v) == [1, 2]
 
 
-def test_filter_threshold_strategy():
+def test_filter_threshold_strategy() -> None:
     strategy = filter_threshold_strategy(sim_threshold=0.7, support_threshold=0.5)
     edge_data = EdgeData(
         u=np.array([0, 0, 1]),
@@ -239,7 +239,7 @@ def test_filter_threshold_strategy():
     assert list(filtered.v) == [1, 2]
 
 
-def test_filter_rescue_strategy():
+def test_filter_rescue_strategy() -> None:
     strategy = filter_rescue_strategy(
         sim_core=0.7, support_core=0.3, sim_rescue_min=0.4, support_rescue=0.5
     )
@@ -260,7 +260,7 @@ def test_filter_rescue_strategy():
 # --- Component & Graph Building Tests ---
 
 
-def test_extract_graphdata(sample_spectra):
+def test_extract_graphdata(sample_spectra) -> None:
     sim = np.array([[1.0, 0.8, 0.2], [0.8, 1.0, 0.9], [0.2, 0.9, 1.0]])
     sup = np.array([[1.0, 0.5, 0.1], [0.5, 1.0, 0.7], [0.1, 0.7, 1.0]])
 
@@ -271,7 +271,7 @@ def test_extract_graphdata(sample_spectra):
     assert list(edge_data.sim) == [0.8, 0.2, 0.9]
 
 
-def test_filter_components_max_size():
+def test_filter_components_max_size() -> None:
     edge_data = EdgeData(
         u=np.array([0, 1, 2]),
         v=np.array([1, 2, 3]),
@@ -289,7 +289,7 @@ def test_filter_components_max_size():
     assert list(filtered.u) == [0, 1]
 
 
-def test_build_graph(sample_spectra):
+def test_build_graph(sample_spectra) -> None:
     sim = np.array([[1.0, 0.8, 0.1], [0.8, 1.0, 0.9], [0.1, 0.9, 1.0]])
     sup = np.array([[1.0, 0.5, 0.1], [0.5, 1.0, 0.7], [0.1, 0.7, 1.0]])
     strategy = filter_base_strategy(sim_threshold=0.5)
@@ -304,7 +304,7 @@ def test_build_graph(sample_spectra):
     assert G[0][1]["weight"] == 0.8
 
 
-def test_run_networking(sample_spectra, mock_config):
+def test_run_networking(sample_spectra, mock_config) -> None:
     sim = np.array([[1.0, 0.8, 0.1], [0.8, 1.0, 0.9], [0.1, 0.9, 1.0]])
     sup = np.array([[1.0, 0.5, 0.1], [0.5, 1.0, 0.7], [0.1, 0.7, 1.0]])
 
@@ -316,7 +316,7 @@ def test_run_networking(sample_spectra, mock_config):
     assert G.number_of_nodes() == 3
 
 
-def test_assign_and_add_cluster_numbering():
+def test_assign_and_add_cluster_numbering() -> None:
     G = nx.Graph()
     G.add_edges_from([(0, 1), (1, 2), (3, 4)])
 

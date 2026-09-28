@@ -1,5 +1,7 @@
 from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import networkx as nx
 import numpy as np
@@ -11,7 +13,7 @@ from utils.configs import SNAPMSConfig
 
 
 # ATLAS
-def import_atlas(config: SNAPMSConfig):
+def import_atlas(config: SNAPMSConfig) -> pd.DataFrame:
     db_path = Path(config.reference_db)
 
     if not db_path.exists():
@@ -32,7 +34,7 @@ ADDUCT_DICT = {
 }
 
 
-def derive_neutral_mass(precursor_mz, adduct):
+def derive_neutral_mass(precursor_mz: float, adduct: str) -> float:
     if adduct in ADDUCT_DICT:
         adduct = ADDUCT_DICT[adduct]
 
@@ -113,7 +115,7 @@ def derive_neutral_mass(precursor_mz, adduct):
 ADDUCT_ALIASES = ["adduct", "ion"]
 
 
-def get_adducts(mn, node, config: SNAPMSConfig):
+def get_adducts(mn: nx.Graph, node: str | int, config: SNAPMSConfig) -> list[str]:
     if not config.detect_adduct:
         return config.adduct_list
 
@@ -131,9 +133,12 @@ def get_adducts(mn, node, config: SNAPMSConfig):
 
 # DATABASE MATCHING
 def compute_adduct_matches(
-    mn, nodes: dict, config: SNAPMSConfig, db_df: pd.DataFrame
-) -> list[dict]:
-    result = []
+    mn: nx.Graph,
+    nodes: dict[Any, Any] | Sequence[Any],
+    config: SNAPMSConfig,
+    db_df: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
 
     for node in nodes:
         for adduct in get_adducts(mn, node, config):
@@ -151,35 +156,30 @@ def compute_adduct_matches(
                 print(f"WARNING: unknown adduct {adduct}, ignoring this mass...")
                 continue
 
-            try:
-                motifs = mn.nodes[node]["motifs"]
-            except KeyError as e:
-                motifs = ""
-
+            motifs = mn.nodes[node].get("motifs", "")
             mass_error = round((neutral_mass * config.ppm_error) / 1e6, 4)
 
             mask = db_df["neutral_mass"].between(
                 neutral_mass - mass_error, neutral_mass + mass_error
             )
-            db_matches = db_df[mask]
+            db_matches = db_df.loc[
+                mask, ["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]
+            ].copy()
 
             if db_matches.empty:
                 continue
-
-            db_matches = db_matches[
-                ["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]
-            ]
 
             db_matches["mn_node_id"] = node
             db_matches["adduct"] = adduct
             db_matches["motifs"] = motifs
 
-            result += list(db_matches.to_dict(orient="records"))
+            records: list[dict[str, Any]] = db_matches.to_dict("records")
+            result.extend(records)
 
     return result
 
 
-def merge_duplicates(matches: list[dict]):
+def merge_duplicates(matches: list[dict]) -> list[dict]:
 
     duplicates = defaultdict(list)
     parent_nodes = set()
@@ -213,7 +213,10 @@ def merge_duplicates(matches: list[dict]):
     return result
 
 
-def group_by_property(graph: nx.Graph, key_property: str | int) -> dict[dict]:
+def group_by_property(
+    graph: nx.Graph, key_property: str | int
+) -> dict[str | float | int, dict]:
+
     data = dict(graph.nodes(data=True))
     groups = {}
 
@@ -227,7 +230,9 @@ def group_by_property(graph: nx.Graph, key_property: str | int) -> dict[dict]:
     return groups
 
 
-def filter_clusters(clusters, config: SNAPMSConfig) -> dict[dict]:
+def filter_clusters(
+    clusters: dict, config: SNAPMSConfig
+) -> dict[str | float | int, dict]:
     clusters = {k: v for k, v in clusters.items() if len(v) >= config.min_cluster_size}
     clusters = {k: v for k, v in clusters.items() if len(v) <= config.max_cluster_size}
     return clusters
@@ -236,13 +241,13 @@ def filter_clusters(clusters, config: SNAPMSConfig) -> dict[dict]:
 ID_COUNTER = -1
 
 
-def get_unique_id():
+def get_unique_id() -> int:
     global ID_COUNTER
     ID_COUNTER += 1
     return ID_COUNTER
 
 
-def get_edges(matches: list[dict], cutoff=0.66) -> list[tuple[int, int]]:
+def get_edges(matches: list[dict], cutoff: float = 0.66) -> list[tuple[int, int]]:
     fingerprints = []
     for match in matches:
         fp = ExplicitBitVect(2048)
@@ -267,15 +272,17 @@ def get_edges(matches: list[dict], cutoff=0.66) -> list[tuple[int, int]]:
     return result
 
 
-def remove_self_similar_vals(edges):
+def remove_self_similar_vals(edges: list[tuple]) -> list[tuple]:
     return [(u, v) for u, v in edges if u != v]
 
 
-def remove_edges_with_same_value_for(edges, metadata, key):
+def remove_edges_with_same_value_for(
+    edges: list[tuple], metadata: dict, key: str
+) -> list[tuple]:
     return [(u, v) for u, v in edges if metadata[u][key] != metadata[v][key]]
 
 
-def remove_small_subgraphs(graph: nx.Graph, config: SNAPMSConfig):
+def remove_small_subgraphs(graph: nx.Graph, config: SNAPMSConfig) -> None:
     clusters = [x for x in nx.connected_components(graph)]
     for nodes in clusters:
         if len(nodes) < config.min_annotation_size:
@@ -301,7 +308,7 @@ def _nr_of_unique_compounds(graph: nx.Graph, nodes: set, key: str) -> int:
     return len(all_compounds)
 
 
-def add_cluster_numbering(graph: nx.Graph):
+def add_cluster_numbering(graph: nx.Graph) -> None:
     ordered_clusters = sorted(
         nx.connected_components(graph), key=lambda x: len(x), reverse=True
     )

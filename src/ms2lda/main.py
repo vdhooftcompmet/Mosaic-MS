@@ -13,7 +13,7 @@ from ms2lda.ms2lda import (
 from utils.configs import MS2LDAConfig
 
 
-def main(config: MS2LDAConfig):
+def main(config: MS2LDAConfig) -> None:
 
     spectra = load_from_mgf(config.mgf)
     cleaned_spectra = clean_spectra(spectra, config)

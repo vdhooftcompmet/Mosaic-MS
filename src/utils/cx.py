@@ -29,7 +29,7 @@ def read_cx(file):
     return graph
 
 
-def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None):
+def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None) -> None:
     file_path = str(file_path)
     nice_cx = ndex2.NiceCXNetwork()
 
@@ -68,7 +68,7 @@ def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None):
         json.dump(cx_data, f)
 
 
-def infer_cx_type(val):
+def infer_cx_type(val) -> str:
     if isinstance(val, bool):
         return "boolean"
     if isinstance(val, int):

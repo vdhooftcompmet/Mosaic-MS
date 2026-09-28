@@ -17,26 +17,10 @@ from utils.configs import MNConfig
 from utils.context import suppress_output
 
 
-def run_bootstrap(
-    spectra: list[Spectrum],
-    config: MNConfig,
-    ms2deepscore_model_path=None,
-    spec2vec_model_path=None,
-):
-    average_similarity, support = calculate_bootstrapping(
-        spectra,
-        config.similarity_type,
-        config,
-        ms2deepscore_model_path,
-        spec2vec_model_path,
-    )
-    return average_similarity, support
-
-
 def plain_similarity(
     spectra: list[Spectrum],
     config: MNConfig,
-):
+) -> np.ndarray:
     similarity_metric = get_similarity(
         config.similarity_type, config.flash_tolerance, config
     )
@@ -113,7 +97,7 @@ def bin_spectra(spectra: list[Spectrum], decimals: int) -> list[Spectrum]:
     return binned_spectra
 
 
-def mutual_topk(A, k):
+def mutual_topk(A: np.ndarray, k: int) -> np.ndarray:
     n = A.shape[0]
     A_work = A.copy()
     np.fill_diagonal(A_work, -np.inf)
@@ -134,7 +118,10 @@ def mutual_topk(A, k):
     return result
 
 
-def get_similarity(method_name: str, flash_tolerance: float, config: MNConfig):
+def get_similarity(
+    method_name: str, flash_tolerance: float, config: MNConfig
+) -> FlashSimilarity | MS2DeepScore | Spec2Vec:
+
     match method_name:
         case "cos" | "cosine":
             return FlashSimilarity(
@@ -172,7 +159,7 @@ def get_similarity(method_name: str, flash_tolerance: float, config: MNConfig):
 
 
 def _mask_spectra_globally(
-    random_generator: any, global_bins: np.ndarray, binned_spectra: np.ndarray
+    random_generator, global_bins: np.ndarray, binned_spectra: np.ndarray
 ) -> list[Spectrum]:
     result = []
 
@@ -405,7 +392,7 @@ def _assign_cluster_ids(graph: nx.Graph) -> None:
             graph.nodes[node]["component"] = cid
 
 
-def add_cluster_numbering(graph: nx.Graph):
+def add_cluster_numbering(graph: nx.Graph) -> None:
     ordered_clusters = sorted(
         nx.connected_components(graph), key=lambda x: len(x), reverse=True
     )

@@ -1,5 +1,7 @@
 import json
+from pathlib import Path
 
+from matchms import Spectrum
 from matchms.exporting import save_as_mgf
 from matchms.filtering import derive_ionmode
 from matchms.importing import load_from_mgf
@@ -8,12 +10,16 @@ from rdkit.Chem import Descriptors
 from tqdm import tqdm
 
 
-def extract_positive_mode(input_file, output_file):
+def extract_positive_mode(input_file: str | Path, output_file: str | Path) -> None:
     spectra = load_from_mgf(str(input_file))
 
     result = []
     for spectrum in tqdm(spectra):
         spectrum = derive_ionmode(spectrum)
+
+        if not isinstance(spectrum, Spectrum):
+            raise TypeError("matchms.derive_ionmode() returned None, expected Spectrum")
+
         if spectrum.get("ionmode") == "positive":
             result.append(spectrum)
 
@@ -23,8 +29,11 @@ def extract_positive_mode(input_file, output_file):
 
 
 def create_databse_intersection_mgf(
-    spectral_database_mgf, strucuture_database_jsonl, output_file, add_missing=True
-):
+    spectral_database_mgf,
+    strucuture_database_jsonl,
+    output_file,
+    add_missing: bool = True,
+) -> None:
     result = []
 
     print("calculating structure inchikeys...")
@@ -41,7 +50,7 @@ def create_databse_intersection_mgf(
     save_as_mgf(spectral_db, str(spectral_database_mgf), file_mode="w")
 
 
-def sdf_to_structure_db(input_sdf, output_jsonl):
+def sdf_to_structure_db(input_sdf, output_jsonl) -> None:
     suppl = Chem.SDMolSupplier(str(input_sdf))
     seen = set()
 
@@ -83,7 +92,7 @@ def get_structure_db_inchikeys(strucuture_database_jsonl):
 
 
 def read_structural_db(strucuture_database_jsonl):
-    with open(strucuture_database_jsonl, "r") as f:
+    with open(strucuture_database_jsonl) as f:
         for i, line in enumerate(f):
             try:
                 data = json.loads(line)

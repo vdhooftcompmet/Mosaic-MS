@@ -86,7 +86,7 @@ def dummy_documents():
 
 
 @patch("ms2lda.ms2lda.msfilters")
-def test_clean_spectra(mock_msfilters, mock_config, sample_spectrum):
+def test_clean_spectra(mock_msfilters, mock_config, sample_spectrum) -> None:
     # Setup mock return values for chained matchms filters
     mock_msfilters.default_filters.side_effect = lambda s: s
     mock_msfilters.add_retention_index.side_effect = lambda s: s
@@ -105,7 +105,7 @@ def test_clean_spectra(mock_msfilters, mock_config, sample_spectrum):
     assert cleaned[0].get("spectrum_id") == 0
 
 
-def test_spectra_to_documents_dda(mock_config, sample_spectrum):
+def test_spectra_to_documents_dda(mock_config, sample_spectrum) -> None:
     mock_config.dataset_acquisition_type = "DDA"
 
     documents = spectra_to_documents([sample_spectrum], mock_config)
@@ -122,7 +122,7 @@ def test_spectra_to_documents_dda(mock_config, sample_spectrum):
     assert "loss@99.54" in doc
 
 
-def test_spectra_to_documents_dia_ignores_losses(mock_config, sample_spectrum):
+def test_spectra_to_documents_dia_ignores_losses(mock_config, sample_spectrum) -> None:
     mock_config.dataset_acquisition_type = "DIA"
 
     documents = spectra_to_documents([sample_spectrum], mock_config)
@@ -137,7 +137,7 @@ def test_spectra_to_documents_dia_ignores_losses(mock_config, sample_spectrum):
     assert not any(w.startswith("loss@") for w in doc)
 
 
-def test_spectra_to_documents_invalid_acquisition_type(mock_config, sample_spectrum):
+def test_spectra_to_documents_invalid_acquisition_type(mock_config, sample_spectrum) -> None:
     mock_config.dataset_acquisition_type = "INVALID_TYPE"
 
     with pytest.raises(AssertionError):
@@ -147,7 +147,7 @@ def test_spectra_to_documents_invalid_acquisition_type(mock_config, sample_spect
 # --- Entropy Calculation Tests ---
 
 
-def test_calculate_document_entropy():
+def test_calculate_document_entropy() -> None:
     mock_model = MagicMock(spec=tp.LDAModel)
     doc1 = MagicMock()
     doc1.get_topic_dist.return_value = [0.5, 0.5]
@@ -161,7 +161,7 @@ def test_calculate_document_entropy():
     assert entropy > 0
 
 
-def test_calculate_topic_entropy():
+def test_calculate_topic_entropy() -> None:
     mock_model = MagicMock(spec=tp.LDAModel)
     mock_model.k = 2
     mock_model.get_topic_word_dist.side_effect = [
@@ -178,7 +178,7 @@ def test_calculate_topic_entropy():
 # --- Convergence Tests ---
 
 
-def test_has_model_converged_true(mock_config):
+def test_has_model_converged_true(mock_config) -> None:
     mock_config.conv_type = "perplexity_history"
     mock_config.conv_window_size = 2
     mock_config.conv_threshold = 0.1
@@ -188,14 +188,14 @@ def test_has_model_converged_true(mock_config):
     assert _has_model_converged(history, mock_config) is True
 
 
-def test_has_model_converged_false_insufficient_history(mock_config):
+def test_has_model_converged_false_insufficient_history(mock_config) -> None:
     mock_config.conv_window_size = 3
     history = ConvergenceResult([100.0, 99.0], [], [], [])
 
     assert _has_model_converged(history, mock_config) is False
 
 
-def test_has_model_converged_handles_zero_values(mock_config):
+def test_has_model_converged_handles_zero_values(mock_config) -> None:
     mock_config.conv_type = "log_likelihood_history"
     mock_config.conv_window_size = 2
     mock_config.conv_threshold = 0.01
@@ -209,7 +209,7 @@ def test_has_model_converged_handles_zero_values(mock_config):
 # --- Train Model Tests ---
 
 
-def test_train_model_runs_and_converges(mock_config, dummy_documents):
+def test_train_model_runs_and_converges(mock_config, dummy_documents) -> None:
     model, result = train_model(dummy_documents, mock_config)
 
     assert isinstance(model, tp.LDAModel)
@@ -221,7 +221,7 @@ def test_train_model_runs_and_converges(mock_config, dummy_documents):
 @patch("ms2lda.ms2lda._has_model_converged", return_value=False)
 def test_train_model_warns_on_non_convergence(
     mock_has_converged, mock_config, dummy_documents, capsys
-):
+) -> None:
     model, result = train_model(dummy_documents, mock_config)
 
     captured = capsys.readouterr()
@@ -231,7 +231,7 @@ def test_train_model_warns_on_non_convergence(
 # --- Motif Extraction Tests ---
 
 
-def test_extract_motif_valid(mock_config):
+def test_extract_motif_valid(mock_config) -> None:
     topic = [("frag@100.555", 10.0), ("loss@50.222", 5.0)]
 
     spectrum = _extract_motif(0, topic, mock_config)
@@ -243,14 +243,14 @@ def test_extract_motif_valid(mock_config):
     assert spectrum.get("id") == "motif_0"
 
 
-def test_extract_motif_invalid_prefix(mock_config):
+def test_extract_motif_invalid_prefix(mock_config) -> None:
     topic = [("unknown@100.0", 1.0)]
 
     with pytest.raises(ValueError, match="invalid feature prefix"):
         _extract_motif(0, topic, mock_config)
 
 
-def test_extract_motifs_integration(mock_config):
+def test_extract_motifs_integration(mock_config) -> None:
     mock_model = MagicMock(spec=tp.LDAModel)
     mock_model.k = 2
     mock_model.get_topic_words.side_effect = [
@@ -267,7 +267,7 @@ def test_extract_motifs_integration(mock_config):
 # --- File Persistence Tests ---
 
 
-def test_store_model_and_load_model(tmp_path: Path):
+def test_store_model_and_load_model(tmp_path: Path) -> None:
     model_path = tmp_path / "lda_test.bin"
 
     mdl = tp.LDAModel(k=2)
@@ -289,7 +289,7 @@ def test_store_model_and_load_model(tmp_path: Path):
 
 
 @patch("ms2lda.ms2lda.save_as_mgf")
-def test_store_mass2motifs(mock_save_mgf, tmp_path: Path):
+def test_store_mass2motifs(mock_save_mgf, tmp_path: Path) -> None:
     file_path = tmp_path / "motifs.mgf"
     motifs = [Spectrum(np.array([100.0]), np.array([1.0]))]
 

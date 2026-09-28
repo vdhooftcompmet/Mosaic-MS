@@ -15,6 +15,7 @@ from add_ms2lda.main import (
     parse_spectrum_peaks,
     run_overlap_scores_calculation,
 )
+from typing import Sequence
 
 # --- Fixtures ---
 
@@ -84,12 +85,12 @@ def mock_lda_model():
         ([[100.1, 10.0], [200.2, 50.0]], [[100.1, 10.0], [200.2, 50.0]]),
     ],
 )
-def test_parse_spectrum_peaks(input_data, expected):
+def test_parse_spectrum_peaks(input_data, expected) -> None:
     result = parse_spectrum_peaks(input_data)
     assert result == expected
 
 
-def test_get_topic_words(mock_lda_model):
+def test_get_topic_words(mock_lda_model) -> None:
     words = get_topic_words(mock_lda_model)
     assert words == ["loss@100.12", "fragment@200.45", "loss@100.12", "fragment@200.45"]
 
@@ -102,7 +103,7 @@ def test_get_topic_words(mock_lda_model):
         (["word_without_at"], 0),
     ],
 )
-def test_derive_significant_digits(words, expected_decimals):
+def test_derive_significant_digits(words: Sequence[str], expected_decimals) -> None:
     assert derive_significant_digits(words) == expected_decimals
 
 
@@ -113,7 +114,7 @@ def test_derive_significant_digits(words, expected_decimals):
         (["fragment@100.12", "fragment@200.45"], "DIA"),
     ],
 )
-def test_derive_dataset_acquisition_type(words, expected_type):
+def test_derive_dataset_acquisition_type(words: Sequence[str], expected_type) -> None:
     assert derive_dataset_acquisition_type(words) == expected_type
 
 
@@ -123,7 +124,7 @@ def test_derive_dataset_acquisition_type(words, expected_type):
 @patch("add_ms2lda.main.spectra_to_documents")
 def test_run_overlap_scores_calculation(
     mock_spectra_to_docs, mock_lda_model, mock_params
-):
+) -> None:
     spec1 = Spectrum(mz=np.array([100.1, 200.2]), intensities=np.array([10.0, 50.0]))
     spec2 = Spectrum(mz=np.array([150.3, 250.4]), intensities=np.array([20.0, 80.0]))
     spectra = [spec1, spec2]
@@ -145,7 +146,7 @@ def test_run_overlap_scores_calculation(
 @patch("add_ms2lda.main.spectra_to_documents")
 def test_run_overlap_scores_calculation_empty_document(
     mock_spectra_to_docs, mock_lda_model, mock_params
-):
+) -> None:
     spec1 = Spectrum(mz=np.array([100.1]), intensities=np.array([10.0]))
     mock_spectra_to_docs.return_value = [[]]  # Empty word list
 
@@ -160,13 +161,13 @@ def test_run_overlap_scores_calculation_empty_document(
 # --- Integration & File Handling Tests ---
 
 
-def test_main_file_not_found(mock_params):
+def test_main_file_not_found(mock_params) -> None:
     mock_params.model = "non_existent_file.bin"
     with pytest.raises(AssertionError, match="Model file does not exist"):
         main(mock_params)
 
 
-def test_main_model_path_is_directory(mock_params, tmp_path):
+def test_main_model_path_is_directory(mock_params, tmp_path) -> None:
     mock_params.model = str(tmp_path)
     with pytest.raises(AssertionError, match="is a directory, not a file"):
         main(mock_params)
@@ -188,7 +189,7 @@ def test_main_success(
     mock_params,
     mock_graph,
     mock_lda_model,
-):
+) -> None:
     mock_read_cx.return_value = mock_graph
     mock_lda_load.return_value = mock_lda_model
 

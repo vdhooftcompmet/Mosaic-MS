@@ -21,7 +21,7 @@ from utils.cx import read_cx, write_cx
 from utils.folders import prepare_directory
 
 
-def main(config: SNAPMSConfig):
+def main(config: SNAPMSConfig) -> None:
     atlas_df = import_atlas(config)
 
     file = Path(config.graph)
@@ -67,7 +67,9 @@ def main(config: SNAPMSConfig):
 
         add_cluster_numbering(graph)
         add_top_candidate_annotation(graph)
-        nx.set_node_attributes(graph, mn_cluster_id, "mn_cluster_id")
 
-        save_path = annotation_folder / f"graph-{mn_cluster_id}.cx"
+        values = {node: mn_cluster_id for node in graph.nodes}
+        nx.set_node_attributes(G=graph, values=values, name="mn_cluster_id")
+
+        save_path = str(annotation_folder / f"graph-{mn_cluster_id}.cx")
         write_cx(graph, save_path, ANNOTATION_STYLE_FILE)

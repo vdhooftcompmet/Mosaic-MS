@@ -8,7 +8,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 
 
-def text_to_image(text: str, scale=1.6):
+def text_to_image(text: str, scale: float=1.6):
     lines = text.split("\n")
     max_line_len = max(len(l) for l in lines) if lines else 1
 

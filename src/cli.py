@@ -26,7 +26,7 @@ def prepare_args(args: argparse.Namespace, command_name: str, default_config: Pa
     return args
 
 
-def handle_run_mn(args):
+def handle_run_mn(args) -> None:
     """Executes full Molecular Network (MN) generation workflow."""
     args = prepare_args(args, "mn", DEFAULT_MN_CONFIG)
     from mn.main import main as run_mn_main
@@ -35,7 +35,7 @@ def handle_run_mn(args):
     run_mn_main(mn_config)
 
 
-def handle_run_ms2lda(args):
+def handle_run_ms2lda(args) -> None:
     """Executes full MS2LDA workflow."""
     args = prepare_args(args, "ms2lda", DEFAULT_MS2LDA_CONFIG)
     from ms2lda.main import main as run_ms2lda_main
@@ -44,7 +44,7 @@ def handle_run_ms2lda(args):
     run_ms2lda_main(ms2lda_config)
 
 
-def handle_add_ms2lda(args):
+def handle_add_ms2lda(args) -> None:
     """
     Integrates motif detection and metadata injection into target CX graph.
     Mirrors rule motif_overlap + mn_motif_metadata.py from Snakefile.
@@ -53,7 +53,7 @@ def handle_add_ms2lda(args):
     add_ms2lda_main(args)
 
 
-def handle_run_snapms(args):
+def handle_run_snapms(args) -> None:
     """Executes full SnapMS compound identification workflow."""
     args = prepare_args(args, "snapms", DEFAULT_SNAPMS_CONFIG)
     from snapms.main import main as run_snapms_main
@@ -62,7 +62,7 @@ def handle_run_snapms(args):
     run_snapms_main(snapms_config)
 
 
-def handle_add_snapms(args):
+def handle_add_snapms(args) -> None:
     """
     Appends SnapMS annotations to a CX graph and flags SMILES.
     Mirrors annotation_metadata scripts in rule snapms from Snakefile.
@@ -71,7 +71,7 @@ def handle_add_snapms(args):
     add_snapms_main(args)
 
 
-def handle_run_all(args):
+def handle_run_all(args) -> None:
     """Executes the complete Mosaic-MS pipeline sequentially."""
 
     # 1. Run Molecular Networking
@@ -439,7 +439,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main():
+def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     args.func(args)

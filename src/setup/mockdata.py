@@ -10,7 +10,7 @@ from rdkit import Chem
 from tqdm import tqdm
 
 
-def clean_mgf(input_mgf, output_mgf):
+def clean_mgf(input_mgf, output_mgf) -> None:
 
     spectra = list(load_from_mgf(str(input_mgf)))
     spectrum_processor = SpectrumProcessor(DEFAULT_FILTERS + CLEAN_PEAKS)
@@ -23,7 +23,7 @@ def clean_mgf(input_mgf, output_mgf):
     save_as_mgf(spectra, str(output_mgf), file_mode="w")
 
 
-def filter_by_inchikey(input_mgf, output_mgf):
+def filter_by_inchikey(input_mgf, output_mgf) -> None:
     result = []
     seen = set()
 
@@ -42,7 +42,7 @@ def filter_by_inchikey(input_mgf, output_mgf):
     save_as_mgf(result, str(output_mgf), file_mode="w")
 
 
-def filter_by_cosine(input_mgf, output_mgf):
+def filter_by_cosine(input_mgf, output_mgf) -> None:
     result = []
     skip = set()
 

@@ -25,13 +25,28 @@ dependencies = [
 [project.scripts]
 mosaic-ms = "cli:main"
 
-[tool.ruff]
-line-length = 88
-target-version = "py310"
-
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP"]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+no_site_packages = true
+
+[[tool.mypy.overrides]]
+module = [
+    "rdkit.*",
+    "matchms.*",
+    "tomotopy.*",
+    "ms2deepscore.*",
+    "spec2vec.*",
+    "ndex2.*",
+    "joblib.*",
+    "gensim.*"
+]
+ignore_missing_imports = true
+follow_imports = "skip"

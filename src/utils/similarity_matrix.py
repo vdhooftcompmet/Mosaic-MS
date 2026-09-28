@@ -28,7 +28,7 @@ def cache(fn):
 MORGAN_GENERATORS = {}
 
 
-def get_morgan_generator(radius=2, n_bits=2048):
+def get_morgan_generator(radius: int=2, n_bits: int=2048):
     global MORGAN_GENERATORS
     key = radius, n_bits
     if key not in MORGAN_GENERATORS:
@@ -39,7 +39,7 @@ def get_morgan_generator(radius=2, n_bits=2048):
 
 
 @cache
-def smile_to_morgan_fp(smile, radius=2, n_bits=2048):
+def smile_to_morgan_fp(smile, radius: int=2, n_bits: int=2048):
     mol = Chem.MolFromSmiles(smile)
     mfpgen = get_morgan_generator(radius=radius, n_bits=n_bits)
     fp = mfpgen.GetCountFingerprint(mol)

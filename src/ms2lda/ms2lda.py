@@ -16,7 +16,7 @@ from utils.configs import MS2LDAConfig
 
 
 def clean_spectra(
-    spectra: Generator[Spectrum, None, None], config: MS2LDAConfig
+    spectra: Generator[Spectrum, None, None] | list[Spectrum], config: MS2LDAConfig
 ) -> list[Spectrum]:
     result = []
 
@@ -61,6 +61,8 @@ def spectra_to_documents(
 
     for spectrum in spectra:
         spectrum = msfilters.normalize_intensities(spectrum)
+        if spectrum is None:
+            raise TypeError("invalid output of msfilters.normalize_intensities, expected Spectrum but got None")
 
         document: list[str] = []
         result.append(document)
@@ -224,17 +226,14 @@ def _extract_motif(
         feature, importance = motif_feature
         importance = float(importance)
 
-        is_loss, is_peak = feature.startswith("loss@"), feature.startswith("frag@")
-
-        if not (is_loss or is_peak):
-            raise ValueError(f"invalid feature prefix {feature}")
-
-        if is_peak:
+        if feature.startswith("frag@"):
             mz_str: str = feature.removeprefix("frag@")
             mz: float = float(mz_str)
-        if is_loss:
+        elif feature.startswith("loss@"):
             mz_str: str = feature.removeprefix("loss@")
             mz: float = float(mz_str) * -1
+        else:
+            raise ValueError(f"invalid feature prefix {feature}")
 
         mz: float = round(mz, significant_digits)
         fragments.append((mz, importance))
@@ -259,7 +258,7 @@ def _extract_motif(
     return Spectrum(np.array(mz), np.array(normalized_intensities), metadata)
 
 
-def store_mass2motifs(mass2motifs: list[Spectrum], path):
+def store_mass2motifs(mass2motifs: list[Spectrum], path: str | Path) -> None:
     save_as_mgf(mass2motifs, str(path), file_mode="w")
 
 

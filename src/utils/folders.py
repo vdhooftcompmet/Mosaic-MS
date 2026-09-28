@@ -7,12 +7,12 @@ import yaml
 
 
 def load_params(path) -> Namespace:
-    with open(path, "r") as f:
+    with open(path) as f:
         params = yaml.safe_load(f)
     return Namespace(**params)
 
 
-def prepare_directory(base_dir, overwrite=False, copy=True):
+def prepare_directory(base_dir, overwrite: bool=False, copy: bool=True):
     if os.path.exists(base_dir):
         if overwrite:
             shutil.rmtree(base_dir)
@@ -33,7 +33,7 @@ def prepare_directory(base_dir, overwrite=False, copy=True):
         return base_dir
 
 
-def save_config(args: Namespace, base_dir: str | Path, name="config.yaml"):
+def save_config(args: Namespace, base_dir: str | Path, name: str="config.yaml") -> None:
     config = vars(args).copy()
     config["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -52,7 +52,7 @@ def get_params(parser, defaults):
         **{k: v for k, v in vars(cli_params).items() if v is not None}
     )
 
-    with open(defaults, "r") as f:
+    with open(defaults) as f:
         params = yaml.safe_load(f)
     default_params = Namespace(**params)
     return Namespace(**(vars(default_params) | vars(cli_params)))
@@ -80,7 +80,7 @@ def read_params(params: str | dict | Namespace | None):
         raise TypeError(f"{params = }")
 
     if params.endswith(".yaml") or params.endswith(".yml"):
-        with open(params, "r") as f:
+        with open(params) as f:
             content = yaml.safe_load(f)
             return Namespace(**content)
 

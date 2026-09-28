@@ -6,7 +6,7 @@ from setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
 from utils.cx import read_annotations, read_cx, write_cx
 
 
-def main(params):
+def main(params) -> None:
     mn = read_cx(str(params.graph))
 
     annotations, files, cluster_ids = read_annotations(params.snapms)

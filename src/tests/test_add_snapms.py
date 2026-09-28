@@ -47,7 +47,7 @@ def sample_annotation_graphs():
 # --- Unit Tests for add_snapms_data ---
 
 
-def test_add_snapms_data_annotations(sample_mass_network, sample_annotation_graphs):
+def test_add_snapms_data_annotations(sample_mass_network, sample_annotation_graphs) -> None:
     add_snapms_data(sample_mass_network, sample_annotation_graphs)
 
     # Cluster 0 nodes should receive max_diversity = 3 and is_annotated = True
@@ -63,7 +63,7 @@ def test_add_snapms_data_annotations(sample_mass_network, sample_annotation_grap
 
 def test_add_snapms_data_unannotated_cluster(
     sample_mass_network, sample_annotation_graphs
-):
+) -> None:
     add_snapms_data(sample_mass_network, sample_annotation_graphs)
 
     # Cluster 2 (not in annotations dict) should default to 0 diversity and False for is_annotated
@@ -71,7 +71,7 @@ def test_add_snapms_data_unannotated_cluster(
     assert sample_mass_network.nodes[3]["is_annotated"] is False
 
 
-def test_add_snapms_data_empty_annotation_graph(sample_mass_network):
+def test_add_snapms_data_empty_annotation_graph(sample_mass_network) -> None:
     empty_ann = nx.Graph()  # Graph with no nodes
     annotations = {"0": empty_ann}
 
@@ -95,7 +95,7 @@ def test_main_execution(
     mock_params,
     sample_mass_network,
     sample_annotation_graphs,
-):
+) -> None:
     mock_read_cx.return_value = sample_mass_network
 
     annotations = list(sample_annotation_graphs.values())

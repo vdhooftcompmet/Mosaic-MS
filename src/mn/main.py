@@ -1,7 +1,9 @@
 import hashlib
+from collections.abc import Callable
 from pathlib import Path
 
-from matchms import SpectrumProcessor
+import numpy as np
+from matchms import Spectrum, SpectrumProcessor
 from matchms.filtering.default_pipelines import CLEAN_PEAKS, DEFAULT_FILTERS
 from matchms.importing import load_from_mgf
 from scipy.sparse import csr_matrix, load_npz, save_npz
@@ -38,8 +40,13 @@ def main(config: MNConfig) -> None:
         write_cx(graph, file_name, MN_STYLE_FILE)
 
 
-def _similarity_cache(fn):
-    def inner(spectra, config: MNConfig):
+def _similarity_cache(
+    fn: Callable
+) -> Callable[[list[Spectrum], MNConfig], tuple[np.ndarray, np.ndarray]]:
+
+    def inner(
+        spectra: list[Spectrum], config: MNConfig
+    ) -> tuple[np.ndarray, np.ndarray]:
         files = {}
         for file_type in ["avg_sim", "tot_sim", "tot_sup"]:
             files[file_type] = Path(config.cache_folder) / _make_cache_name(
@@ -82,7 +89,7 @@ def _make_cache_name(file_type: str, config: MNConfig) -> str:
     return file_name
 
 
-def clean_mgf(path: Path | str):
+def clean_mgf(path: Path | str) -> list[Spectrum]:
     assert isinstance(path, (str, Path)), "path must be a Path object or a string"
 
     spectra = list(load_from_mgf(path))

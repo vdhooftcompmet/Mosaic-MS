@@ -31,20 +31,20 @@ def get_params(parser, defaults: str | Path):
         **{k: v for k, v in vars(cli_params).items() if v is not None}
     )
 
-    with open(str(defaults), "r") as f:
+    with open(str(defaults)) as f:
         params = yaml.safe_load(f)
     default_params = Namespace(**params)
     return Namespace(**(vars(default_params) | vars(cli_params)))
 
 
-def print_params(params):
+def print_params(params) -> None:
     for k, v in sorted(vars(params).items()):
         k = str(k).replace("_", "-")
         print(f"    --{k:<35} {v}")
     print()
 
 
-def add_defaults(params, defaults_path):
+def add_defaults(params, defaults_path) -> None:
     if defaults_path is not None:
         default_params = load_params(defaults_path)
 
@@ -57,7 +57,7 @@ def add_defaults(params, defaults_path):
                 setattr(params, key_normalized, v)
 
 
-def completeness_check(params, allowed_missing=None):
+def completeness_check(params, allowed_missing=None) -> None:
     if allowed_missing is None:
         allowed_missing = []
 

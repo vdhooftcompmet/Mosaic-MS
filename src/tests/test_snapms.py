@@ -82,13 +82,13 @@ def sample_network():
 # --- Database Import Tests ---
 
 
-def test_import_atlas_file_not_found(mock_config, tmp_path):
+def test_import_atlas_file_not_found(mock_config, tmp_path) -> None:
     mock_config.reference_db = tmp_path / "non_existent.json"
     with pytest.raises(FileNotFoundError, match="Reference DB file not found"):
         import_atlas(mock_config)
 
 
-def test_import_atlas_success(mock_config, tmp_path):
+def test_import_atlas_success(mock_config, tmp_path) -> None:
     db_file = tmp_path / "db.json"
     db_file.write_text('{"neutral_mass": 100.0, "smiles": "C"}\n')
     mock_config.reference_db = db_file
@@ -113,31 +113,31 @@ def test_import_atlas_success(mock_config, tmp_path):
         (100.0000, "[M]+", 100.0),
     ],
 )
-def test_derive_neutral_mass_valid(precursor_mz, adduct, expected_neutral_mass):
+def test_derive_neutral_mass_valid(precursor_mz, adduct, expected_neutral_mass) -> None:
     calculated = derive_neutral_mass(precursor_mz, adduct)
     pytest.approx(calculated, expected_neutral_mass, abs=1e-4)
 
 
-def test_derive_neutral_mass_invalid():
+def test_derive_neutral_mass_invalid() -> None:
     with pytest.raises(ValueError, match="Adduct not recognized"):
         derive_neutral_mass(100.0, "[UNKNOWN]+")
 
 
-def test_get_adducts_detect_adduct_false(sample_network, mock_config):
+def test_get_adducts_detect_adduct_false(sample_network, mock_config) -> None:
     mock_config.detect_adduct = False
     mock_config.adduct_list = ["[M+H]+", "[M+Na]+"]
     adducts = get_adducts(sample_network, "node_1", mock_config)
     assert adducts == ["[M+H]+", "[M+Na]+"]
 
 
-def test_get_adducts_detect_adduct_true_found(sample_network, mock_config):
+def test_get_adducts_detect_adduct_true_found(sample_network, mock_config) -> None:
     mock_config.detect_adduct = True
     mock_config.adduct_list = ["[M+H]+"]
     adducts = get_adducts(sample_network, "node_1", mock_config)
     assert set(adducts) == {"[M+H]+"}
 
 
-def test_get_adducts_fallback_warning(sample_network, mock_config, capsys):
+def test_get_adducts_fallback_warning(sample_network, mock_config, capsys) -> None:
     mock_config.detect_adduct = True
     mock_config.adduct_list = ["[M+H]+"]
     sample_network.add_node("node_3", precursor_mz=100.0)
@@ -152,7 +152,7 @@ def test_get_adducts_fallback_warning(sample_network, mock_config, capsys):
 # --- Database Matching Tests ---
 
 
-def test_compute_adduct_matches(sample_network, sample_db_df, mock_config):
+def test_compute_adduct_matches(sample_network, sample_db_df, mock_config) -> None:
     matches = compute_adduct_matches(
         sample_network, ["node_1"], mock_config, sample_db_df
     )
@@ -165,7 +165,7 @@ def test_compute_adduct_matches(sample_network, sample_db_df, mock_config):
 
 def test_compute_adduct_matches_missing_mass_or_invalid_adduct(
     sample_network, sample_db_df, mock_config, capsys
-):
+) -> None:
     sample_network.add_node("node_no_mass")
     sample_network.add_node("node_bad_adduct", precursor_mz=100.0, adduct="BAD")
 
@@ -179,7 +179,7 @@ def test_compute_adduct_matches_missing_mass_or_invalid_adduct(
     assert "unknown adduct" in captured.out
 
 
-def test_merge_duplicates():
+def test_merge_duplicates() -> None:
     matches = [
         {"smiles": "CCO", "mn_node_id": "node_1", "motifs": "1;2"},
         {"smiles": "CCO", "mn_node_id": "node_2", "motifs": "2;3"},
@@ -198,13 +198,13 @@ def test_merge_duplicates():
 # --- Clustering & Edge Calculations ---
 
 
-def test_group_by_property(sample_network):
+def test_group_by_property(sample_network) -> None:
     groups = group_by_property(sample_network, "cluster")
     assert 1 in groups
     assert len(groups[1]) == 2
 
 
-def test_filter_clusters(mock_config):
+def test_filter_clusters(mock_config) -> None:
     clusters = {
         "c1": {1: {}},  # Size 1 (too small)
         "c2": {1: {}, 2: {}, 3: {}},  # Size 3 (valid)
@@ -214,7 +214,7 @@ def test_filter_clusters(mock_config):
     assert set(filtered.keys()) == {"c2"}
 
 
-def test_get_edges(sample_db_df):
+def test_get_edges(sample_db_df) -> None:
     matches = sample_db_df.to_dict(orient="records")
     # Tweak neutral_masses so they differ and can form valid edges
     matches[0]["neutral_mass"] = 300.0
@@ -224,7 +224,7 @@ def test_get_edges(sample_db_df):
     assert edges == [(0, 1)]
 
 
-def test_get_edges_ignores_equal_neutral_mass(sample_db_df):
+def test_get_edges_ignores_equal_neutral_mass(sample_db_df) -> None:
     matches = sample_db_df.to_dict(orient="records")
     matches[0]["neutral_mass"] = 300.0
     matches[1]["neutral_mass"] = 300.0  # Same neutral mass
@@ -233,13 +233,13 @@ def test_get_edges_ignores_equal_neutral_mass(sample_db_df):
     assert len(edges) == 0
 
 
-def test_remove_self_similar_vals():
+def test_remove_self_similar_vals() -> None:
     edges = [(0, 1), (1, 1), (2, 3)]
     filtered = remove_self_similar_vals(edges)
     assert filtered == [(0, 1), (2, 3)]
 
 
-def test_remove_edges_with_same_value_for():
+def test_remove_edges_with_same_value_for() -> None:
     edges = [(0, 1), (1, 2)]
     metadata = {0: {"type": "A"}, 1: {"type": "A"}, 2: {"type": "B"}}
 
@@ -250,7 +250,7 @@ def test_remove_edges_with_same_value_for():
 # --- Graph Candidate & Clustering Annotations ---
 
 
-def test_remove_small_subgraphs(mock_config):
+def test_remove_small_subgraphs(mock_config) -> None:
     G = nx.Graph()
     G.add_edges_from([(1, 2)])  # Cluster size 2
     G.add_node(3)  # Cluster size 1
@@ -260,7 +260,7 @@ def test_remove_small_subgraphs(mock_config):
     assert set(G.nodes()) == {1, 2}
 
 
-def test_add_top_candidate_annotation():
+def test_add_top_candidate_annotation() -> None:
     G = nx.Graph()
     # Cluster 1: 3 unique mn_node_id compounds
     G.add_node(1, mn_node_id="A")
@@ -279,7 +279,7 @@ def test_add_top_candidate_annotation():
     assert G.nodes[4]["ann_mass_diversity"] == 1
 
 
-def test_add_top_candidate_annotation_max_count_le_2():
+def test_add_top_candidate_annotation_max_count_le_2() -> None:
     G = nx.Graph()
     G.add_node(1, mn_node_id="A")
     G.add_node(2, mn_node_id="B")
@@ -291,7 +291,7 @@ def test_add_top_candidate_annotation_max_count_le_2():
     assert G.nodes[2]["is_top_candidate"] is False
 
 
-def test_nr_of_unique_compounds():
+def test_nr_of_unique_compounds() -> None:
     G = nx.Graph()
     G.add_node(1, key="A")
     G.add_node(2, key="A")
@@ -301,7 +301,7 @@ def test_nr_of_unique_compounds():
     assert count == 2
 
 
-def test_get_unique_id_and_add_cluster_numbering():
+def test_get_unique_id_and_add_cluster_numbering() -> None:
     id1 = get_unique_id()
     id2 = get_unique_id()
     assert id2 == id1 + 1

@@ -15,8 +15,8 @@ def comparison_plot(
     references: list | Spectrum | None = None,
     spectra: list | Spectrum | None = None,
     scale: float = 1.6,
-    threshold=0.005,
-    top_n=35,
+    threshold: float=0.005,
+    top_n: int=35,
 ) -> list[Axes]:
     if references is None:
         references = []
@@ -162,7 +162,7 @@ def add_losses(spectrum: Spectrum) -> Spectrum:
 
 
 def plot_features(
-    ax, mz, intensities, peak_colors, title="", threshold=0.005, top_n=35
+    ax, mz, intensities, peak_colors, title: str="", threshold: float=0.005, top_n: int=35
 ) -> None:
     ax.vlines(mz, ymin=0, ymax=intensities, colors=peak_colors, linewidth=1.0, zorder=5)
     ax.set_title(title)
@@ -251,7 +251,7 @@ def filter_labels(mz, intensities, peak_colors, threshold, top_n):
     return valid_mzs, valid_intensities, valid_colors
 
 
-def create_plot_grid(min_mz, max_mz, scale=1):
+def create_plot_grid(min_mz, max_mz, scale: int=1):
     fig, ax = plt.subplots(figsize=(4 * scale, 1 * scale), dpi=300)  # inches
     plt.close(fig)
 
