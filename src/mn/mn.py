@@ -93,19 +93,10 @@ def calculate_bootstrapping(
     return mean_similarities, mean_edge_support
 
 
-def global_bins(spectra: list[Spectrum], decimals: int) -> np.ndarray[float]:
-    all_binned_mz = []
-
-    for spec in spectra:
-        rounded_mz_values = np.round(spec.peaks.mz, decimals)
-
-        for mz in rounded_mz_values:
-            all_binned_mz.append(mz)
-
-    unique_mz = set(all_binned_mz)
-    sorted_mz = sorted(unique_mz)
-
-    return np.asarray(sorted_mz)
+def global_bins(spectra: list[Spectrum], decimals: int) -> np.ndarray:
+    rounded_spectra_values = [np.round(s.peaks.mz, decimals) for s in spectra]
+    all_mz = np.concatenate(rounded_spectra_values)
+    return np.sort(np.unique(all_mz))
 
 
 def bin_spectra(spectra: list[Spectrum], decimals: int) -> list[Spectrum]:
