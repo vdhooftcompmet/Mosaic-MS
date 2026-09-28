@@ -277,7 +277,7 @@ def remove_self_similar_vals(edges: list[tuple]) -> list[tuple]:
 
 
 def remove_edges_with_same_value_for(
-    edges: list[tuple], metadata: dict, key: str
+    edges: list[tuple], metadata: list[dict], key: str
 ) -> list[tuple]:
     return [(u, v) for u, v in edges if metadata[u][key] != metadata[v][key]]
 
