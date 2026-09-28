@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -271,6 +272,12 @@ def test_store_model_and_load_model(tmp_path: Path):
 
     mdl = tp.LDAModel(k=2)
     mdl.add_doc(["word1", "word2"])
+
+    warnings.filterwarnings(
+        "ignore",
+        message="The training result may differ even with fixed seed if `workers` != 1.",
+        category=RuntimeWarning,
+    )
     mdl.train(1)
 
     store_model(mdl, model_path)
