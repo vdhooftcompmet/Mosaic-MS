@@ -36,6 +36,7 @@ dependencies:
   - python-dateutil
   - rich
   - pulp==2.7.0
+  - pytest
 
   # PyPI-only dependencies
   - pip:

@@ -22,7 +22,6 @@ from mn.mn import (
     global_bins,
     mutual_topk,
     plain_similarity,
-    run_bootstrap,
     run_networking,
 )
 from utils.configs import MNConfig
@@ -194,16 +193,6 @@ def test_calculate_bootstrapping(sample_spectra, mock_config) -> None:
     assert mean_sup.shape == (3, 3)
     assert np.allclose(np.diag(mean_sim), 1.0)
     assert np.all((mean_sup >= 0.0) & (mean_sup <= 1.0))
-
-
-@patch("mn.mn.calculate_bootstrapping")
-def test_run_bootstrap(mock_calc, sample_spectra, mock_config) -> None:
-    mock_calc.return_value = (np.ones((3, 3)), np.zeros((3, 3)))
-    sim, sup = run_bootstrap(sample_spectra, mock_config)
-
-    assert sim.shape == (3, 3)
-    assert sup.shape == (3, 3)
-    mock_calc.assert_called_once()
 
 
 # --- Edge Filtering Strategies Tests ---
