@@ -25,6 +25,7 @@ def track(
     description: str = "Processing...",
     total: int | None = None,
     transient: bool = False,
+    bar_width: int = 25,
     disable: bool = False,
 ) -> Iterable[T]:
     # Disable progress bar if explicitly set, or during pytest runs
