@@ -85,7 +85,7 @@ def dummy_documents():
 # --- Tests for New Preprocessing & Document Functions ---
 
 
-@patch("ms2lda.ms2lda.msfilters")
+@patch("src.ms2lda.ms2lda.msfilters")
 def test_clean_spectra(mock_msfilters, mock_config, sample_spectrum) -> None:
     # Setup mock return values for chained matchms filters
     mock_msfilters.default_filters.side_effect = lambda s: s
@@ -218,7 +218,7 @@ def test_train_model_runs_and_converges(mock_config, dummy_documents) -> None:
     assert len(result.log_likelihood_history) == len(result.perplexity_history)
 
 
-@patch("ms2lda.ms2lda._has_model_converged", return_value=False)
+@patch("src.ms2lda.ms2lda._has_model_converged", return_value=False)
 def test_train_model_warns_on_non_convergence(
     mock_has_converged, mock_config, dummy_documents, capsys
 ) -> None:
@@ -288,7 +288,7 @@ def test_store_model_and_load_model(tmp_path: Path) -> None:
     assert loaded_mdl.k == 2
 
 
-@patch("ms2lda.ms2lda.save_as_mgf")
+@patch("src.ms2lda.ms2lda.save_as_mgf")
 def test_store_mass2motifs(mock_save_mgf, tmp_path: Path) -> None:
     file_path = tmp_path / "motifs.mgf"
     motifs = [Spectrum(np.array([100.0]), np.array([1.0]))]

@@ -2,7 +2,6 @@ from collections import defaultdict
 from pathlib import Path
 
 import networkx as nx
-from tqdm import tqdm
 
 from src.setup.paths import ANNOTATION_STYLE_FILE
 from src.snapms.snapms import (
@@ -19,6 +18,7 @@ from src.snapms.snapms import (
 from src.utils.configs import SNAPMSConfig
 from src.utils.cx import read_cx, write_cx
 from src.utils.folders import prepare_directory
+from src.utils.progress_bar import track
 
 
 def main(config: SNAPMSConfig) -> None:
@@ -37,7 +37,7 @@ def main(config: SNAPMSConfig) -> None:
         mn_cluster_id = mn.nodes[node]["mn_cluster_id"]
         clusters[mn_cluster_id].append(node)
 
-    for mn_cluster_id, nodes in tqdm(clusters.items()):
+    for mn_cluster_id, nodes in track(clusters.items(), description="running snap-ms..."):
         if len(nodes) < config.min_cluster_size:
             continue
         if len(nodes) > config.max_cluster_size:

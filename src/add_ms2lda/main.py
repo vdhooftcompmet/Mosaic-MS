@@ -5,11 +5,11 @@ from pathlib import Path
 import numpy as np
 import tomotopy as tp
 from matchms import Spectrum
-from tqdm import tqdm
 
 from src.ms2lda.ms2lda import spectra_to_documents
 from src.setup.paths import MN_STYLE_FILE
 from src.utils.cx import read_cx, write_cx
+from src.utils.progress_bar import track
 
 
 def main(params) -> None:
@@ -79,7 +79,7 @@ def run_overlap_scores_calculation(
     words_per_spectra = spectra_to_documents(spectra, params)
 
     documents = []
-    for words in tqdm(words_per_spectra):
+    for words in track(words_per_spectra, description="running snapms..."):
         words = list(words)
 
         if not words:

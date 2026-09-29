@@ -11,10 +11,10 @@ from matchms.similarity.FlashSimilarity import FlashSimilarity
 from ms2deepscore import MS2DeepScore
 from ms2deepscore.models import load_model
 from spec2vec import Spec2Vec
-from tqdm import tqdm
 
 from src.utils.configs import MNConfig
 from src.utils.context import suppress_output
+from src.utils.progress_bar import track
 
 
 def plain_similarity(
@@ -50,23 +50,29 @@ def calculate_bootstrapping(
     total_pair_similarities = np.zeros((dataset_size, dataset_size), dtype=float)
     total_edge_support = np.zeros((dataset_size, dataset_size), dtype=float)
 
-    for b in tqdm(range(config.B)):
-        masked_spectra = _mask_spectra_globally(random_generator, bins, binned_spectra)
+    print(config.B)
+    for b in track(range(config.B), description="running specreboot..."):
+        try:
+            masked_spectra = _mask_spectra_globally(random_generator, bins, binned_spectra)
 
-        with parallel_backend("loky", n_jobs=1):
-            with suppress_output():
-                similarity_matrix = similarity_metric.matrix(
-                    masked_spectra,
-                    masked_spectra,
-                    array_type="numpy",
-                    is_symmetric=True,
-                )
+            with parallel_backend("loky", n_jobs=1):
+                with suppress_output():
+                    similarity_matrix = similarity_metric.matrix(
+                        masked_spectra,
+                        masked_spectra,
+                        array_type="numpy",
+                        is_symmetric=True,
+                    )
 
-        top_k_nearest_neighbours = mutual_topk(similarity_matrix, config.k)
-        top_k_nearest_neighbours_binary = (top_k_nearest_neighbours != 0).astype(int)
+            top_k_nearest_neighbours = mutual_topk(similarity_matrix, config.k)
+            top_k_nearest_neighbours_binary = (top_k_nearest_neighbours != 0).astype(int)
 
-        total_pair_similarities += similarity_matrix
-        total_edge_support += top_k_nearest_neighbours_binary
+            total_pair_similarities += similarity_matrix
+            total_edge_support += top_k_nearest_neighbours_binary
+
+        except Exception as e:
+            print(f"\nCaught exception on iteration b={b}: {e}")
+            raise e
 
     mean_similarities = total_pair_similarities / config.B
 

@@ -10,9 +10,9 @@ import numpy as np
 import tomotopy as tp
 from matchms import Spectrum
 from matchms.exporting import save_as_mgf
-from tqdm import tqdm
 
 from src.utils.configs import MS2LDAConfig
+from src.utils.progress_bar import track
 
 
 def clean_spectra(
@@ -62,7 +62,9 @@ def spectra_to_documents(
     for spectrum in spectra:
         spectrum = msfilters.normalize_intensities(spectrum)
         if spectrum is None:
-            raise TypeError("invalid output of msfilters.normalize_intensities, expected Spectrum but got None")
+            raise TypeError(
+                "invalid output of msfilters.normalize_intensities, expected Spectrum but got None"
+            )
 
         document: list[str] = []
         result.append(document)
@@ -130,7 +132,7 @@ def train_model(
         category=RuntimeWarning,
     )
 
-    for i in tqdm(range(0, config.iterations, config.conv_step_size)):
+    for i in track(range(0, config.iterations, config.conv_step_size), description="running ms2lda..."):
         model.train(
             config.conv_step_size, **train_parameters
         )  # model is doing x amount (step size) of iterations

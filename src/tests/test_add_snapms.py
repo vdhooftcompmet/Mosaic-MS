@@ -85,9 +85,9 @@ def test_add_snapms_data_empty_annotation_graph(sample_mass_network) -> None:
 # --- Integration Test for main ---
 
 
-@patch("add_snapms.main.write_cx")
-@patch("add_snapms.main.read_annotations")
-@patch("add_snapms.main.read_cx")
+@patch("src.add_snapms.main.write_cx")
+@patch("src.add_snapms.main.read_annotations")
+@patch("src.add_snapms.main.read_cx")
 def test_main_execution(
     mock_read_cx,
     mock_read_annotations,

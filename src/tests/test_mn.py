@@ -145,8 +145,8 @@ def test_get_similarity_ms2ds_missing_file(mock_config) -> None:
         get_similarity("ms2ds", 0.1, mock_config)
 
 
-@patch("mn.mn.Path.exists", return_value=True)
-@patch("mn.mn.load_model")
+@patch("src.mn.mn.Path.exists", return_value=True)
+@patch("src.mn.mn.load_model")
 def test_get_similarity_ms2ds_success(mock_load_model, mock_exists, mock_config) -> None:
     mock_load_model.return_value = MagicMock()
     metric = get_similarity("ms2ds", 0.1, mock_config)
@@ -159,8 +159,8 @@ def test_get_similarity_spec2vec_missing_file(mock_config) -> None:
         get_similarity("s2v", 0.1, mock_config)
 
 
-@patch("mn.mn.Path.exists", return_value=True)
-@patch("mn.mn.gensim.models.Word2Vec.load")
+@patch("src.mn.mn.Path.exists", return_value=True)
+@patch("src.mn.mn.gensim.models.Word2Vec.load")
 def test_get_similarity_spec2vec_success(mock_w2v_load, mock_exists, mock_config) -> None:
     mock_model = MagicMock()
     mock_model.wv.key_to_index = {"peak@100.12": 0}

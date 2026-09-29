@@ -1,16 +1,16 @@
 import os
-import requests
 from pathlib import Path
-from rich.progress import (
-    Progress,
-    BarColumn,
-    DownloadColumn,
-    TransferSpeedColumn,
-    TimeRemainingColumn,
-)
-from rich.filesize import decimal
 from urllib.parse import urlparse
 
+import requests
+from rich.filesize import decimal
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 
 FILE_NAMES = [
     "coconut_db.jsonl",
@@ -73,22 +73,26 @@ def download_from_link(url, target_dir):
     local_filename = os.path.join(target_dir, raw_filename)
 
     response = requests.get(url, stream=True)
-    total_size = int(response.headers.get('content-length', 0))
+    total_size = int(response.headers.get("content-length", 0))
     block_size = 1024
     formatted_size = decimal(total_size)
 
     print(f"Downloading {url} ({formatted_size})")
     progress_bar = Progress(
-        BarColumn(), "[progress.percentage]{task.percentage:>3.0f}%",
-        "•", DownloadColumn(),
-        "•", TransferSpeedColumn(),
-        "•", TimeRemainingColumn(),
+        BarColumn(),
+        "[progress.percentage]{task.percentage:>3.0f}%",
+        "•",
+        DownloadColumn(),
+        "•",
+        TransferSpeedColumn(),
+        "•",
+        TimeRemainingColumn(),
     )
 
     with progress_bar as progress:
         task = progress.add_task("   ", total=total_size)
 
-        with open(local_filename, 'wb') as f:
+        with open(local_filename, "wb") as f:
             for data in response.iter_content(block_size):
                 f.write(data)
                 progress.update(task, advance=len(data))

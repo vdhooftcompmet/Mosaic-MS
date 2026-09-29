@@ -121,7 +121,7 @@ def test_derive_dataset_acquisition_type(words: Sequence[str], expected_type) ->
 # --- Core Calculation Tests ---
 
 
-@patch("add_ms2lda.main.spectra_to_documents")
+@patch("src.add_ms2lda.main.spectra_to_documents")
 def test_run_overlap_scores_calculation(
     mock_spectra_to_docs, mock_lda_model, mock_params
 ) -> None:
@@ -143,7 +143,7 @@ def test_run_overlap_scores_calculation(
     assert np.all(overlap_scores >= 0)
 
 
-@patch("add_ms2lda.main.spectra_to_documents")
+@patch("src.add_ms2lda.main.spectra_to_documents")
 def test_run_overlap_scores_calculation_empty_document(
     mock_spectra_to_docs, mock_lda_model, mock_params
 ) -> None:
@@ -173,12 +173,12 @@ def test_main_model_path_is_directory(mock_params, tmp_path) -> None:
         main(mock_params)
 
 
-@patch("add_ms2lda.main.write_cx")
-@patch("add_ms2lda.main.read_cx")
-@patch("add_ms2lda.main.run_overlap_scores_calculation")
-@patch("add_ms2lda.main.tp.LDAModel.load")
-@patch("add_ms2lda.main.Path.is_file", return_value=True)
-@patch("add_ms2lda.main.Path.exists", return_value=True)
+@patch("src.add_ms2lda.main.write_cx")
+@patch("src.add_ms2lda.main.read_cx")
+@patch("src.add_ms2lda.main.run_overlap_scores_calculation")
+@patch("src.add_ms2lda.main.tp.LDAModel.load")
+@patch("src.add_ms2lda.main.Path.is_file", return_value=True)
+@patch("src.add_ms2lda.main.Path.exists", return_value=True)
 def test_main_success(
     mock_exists,
     mock_is_file,

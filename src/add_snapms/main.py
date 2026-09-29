@@ -4,6 +4,7 @@ import networkx as nx
 
 from src.setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
 from src.utils.cx import read_annotations, read_cx, write_cx
+from src.utils.progress_bar import track
 
 
 def main(params) -> None:
@@ -27,7 +28,7 @@ def add_snapms_data(mn: nx.Graph, annotations: dict) -> None:
         cluster = str(mn.nodes[node]["mn_cluster_id"])
         clusters[cluster].add(node)
 
-    for cluster, nodes in clusters.items():
+    for cluster, nodes in track(clusters.items()):
         for node in nodes:
             annotation = annotations.get(cluster, [])
 
@@ -43,7 +44,7 @@ def add_snapms_data(mn: nx.Graph, annotations: dict) -> None:
     for node in mn:
         mn.nodes[node]["is_annotated"] = False
 
-    for cluster_id, graph in annotations.items():
+    for cluster_id, graph in track(annotations.items()):
         is_top_candidate = any([graph.nodes[n]["is_top_candidate"] for n in graph])
 
         for node in clusters[cluster_id]:
