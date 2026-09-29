@@ -12,7 +12,7 @@ from matchms import Spectrum
 from matchms.exporting import save_as_mgf
 from tqdm import tqdm
 
-from utils.configs import MS2LDAConfig
+from src.utils.configs import MS2LDAConfig
 
 
 def clean_spectra(

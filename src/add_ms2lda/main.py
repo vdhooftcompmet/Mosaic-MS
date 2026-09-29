@@ -7,9 +7,9 @@ import tomotopy as tp
 from matchms import Spectrum
 from tqdm import tqdm
 
-from ms2lda.ms2lda import spectra_to_documents
-from setup.paths import MN_STYLE_FILE
-from utils.cx import read_cx, write_cx
+from src.ms2lda.ms2lda import spectra_to_documents
+from src.setup.paths import MN_STYLE_FILE
+from src.utils.cx import read_cx, write_cx
 
 
 def main(params) -> None:

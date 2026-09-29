@@ -9,7 +9,7 @@ import pandas as pd
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
-from utils.configs import SNAPMSConfig
+from src.utils.configs import SNAPMSConfig
 
 
 # ATLAS

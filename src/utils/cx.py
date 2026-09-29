@@ -7,7 +7,7 @@ import ndex2
 import networkx as nx
 from tqdm import tqdm
 
-from utils.constants import *
+from src.utils.constants import *
 
 
 def read_cx(file):

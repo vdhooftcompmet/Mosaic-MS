@@ -4,8 +4,8 @@ from pathlib import Path
 import networkx as nx
 from tqdm import tqdm
 
-from setup.paths import ANNOTATION_STYLE_FILE
-from snapms.snapms import (
+from src.setup.paths import ANNOTATION_STYLE_FILE
+from src.snapms.snapms import (
     add_cluster_numbering,
     add_top_candidate_annotation,
     compute_adduct_matches,
@@ -16,9 +16,9 @@ from snapms.snapms import (
     remove_self_similar_vals,
     remove_small_subgraphs,
 )
-from utils.configs import SNAPMSConfig
-from utils.cx import read_cx, write_cx
-from utils.folders import prepare_directory
+from src.utils.configs import SNAPMSConfig
+from src.utils.cx import read_cx, write_cx
+from src.utils.folders import prepare_directory
 
 
 def main(config: SNAPMSConfig) -> None:

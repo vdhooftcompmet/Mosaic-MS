@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from utils.folders import load_params
+from src.utils.folders import load_params
 
 
 def stringify_args(args: Namespace | None, ignore: list[str] | None = None) -> str:

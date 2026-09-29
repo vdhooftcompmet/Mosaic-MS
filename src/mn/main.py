@@ -8,16 +8,16 @@ from matchms.filtering.default_pipelines import CLEAN_PEAKS, DEFAULT_FILTERS
 from matchms.importing import load_from_mgf
 from scipy.sparse import csr_matrix, load_npz, save_npz
 
-from mn.mn import (
+from src.mn.mn import (
     add_cluster_numbering,
     calculate_bootstrapping,
     plain_similarity,
     run_networking,
 )
-from setup.paths import MN_STYLE_FILE
-from utils.configs import MNConfig
-from utils.cx import write_cx
-from utils.folders import prepare_directory
+from src.setup.paths import MN_STYLE_FILE
+from src.utils.configs import MNConfig
+from src.utils.cx import write_cx
+from src.utils.folders import prepare_directory
 
 
 def main(config: MNConfig) -> None:

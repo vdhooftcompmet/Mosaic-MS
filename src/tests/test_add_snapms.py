@@ -4,7 +4,7 @@ from unittest.mock import patch
 import networkx as nx
 import pytest
 
-from add_snapms.main import add_snapms_data, main
+from src.add_snapms.main import add_snapms_data, main
 
 # --- Fixtures ---
 

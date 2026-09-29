@@ -1,9 +1,9 @@
 import argparse
 from pathlib import Path
 
-from utils.configs import MNConfig, MS2LDAConfig, SNAPMSConfig
+from src.utils.configs import MNConfig, MS2LDAConfig, SNAPMSConfig
 
-REPO = Path(__file__).parent.parent.resolve()
+REPO = Path(__file__).parent.resolve()
 DEFAULT_MN_CONFIG = REPO / "config" / "mn.yaml"
 DEFAULT_MS2LDA_CONFIG = REPO / "config" / "ms2lda.yaml"
 DEFAULT_SNAPMS_CONFIG = REPO / "config" / "snapms.yaml"
@@ -13,7 +13,7 @@ def prepare_args(
     args: argparse.Namespace, command_name: str, default_config: Path
 ) -> argparse.Namespace:
     """Applies YAML defaults, strips control attributes, and logs parameters."""
-    from utils.cli import add_defaults, print_params
+    from src.utils.cli import add_defaults, print_params
 
     args.defaults = args.defaults if args.defaults else str(default_config)
     if args.defaults and Path(args.defaults).exists():
@@ -31,7 +31,7 @@ def prepare_args(
 def handle_run_mn(args) -> None:
     """Executes full Molecular Network (MN) generation workflow."""
     args = prepare_args(args, "mn", DEFAULT_MN_CONFIG)
-    from mn.main import main as run_mn_main
+    from src.mn.main import main as run_mn_main
 
     mn_config = MNConfig(**dict(vars(args)))
     run_mn_main(mn_config)
@@ -40,7 +40,7 @@ def handle_run_mn(args) -> None:
 def handle_run_ms2lda(args) -> None:
     """Executes full MS2LDA workflow."""
     args = prepare_args(args, "ms2lda", DEFAULT_MS2LDA_CONFIG)
-    from ms2lda.main import main as run_ms2lda_main
+    from src.ms2lda.main import main as run_ms2lda_main
 
     ms2lda_config = MS2LDAConfig(**dict(vars(args)))
     run_ms2lda_main(ms2lda_config)
@@ -51,7 +51,7 @@ def handle_add_ms2lda(args) -> None:
     Integrates motif detection and metadata injection into target CX graph.
     Mirrors rule motif_overlap + mn_motif_metadata.py from Snakefile.
     """
-    from add_ms2lda.main import main as add_ms2lda_main
+    from src.add_ms2lda.main import main as add_ms2lda_main
 
     add_ms2lda_main(args)
 
@@ -59,7 +59,7 @@ def handle_add_ms2lda(args) -> None:
 def handle_run_snapms(args) -> None:
     """Executes full SnapMS compound identification workflow."""
     args = prepare_args(args, "snapms", DEFAULT_SNAPMS_CONFIG)
-    from snapms.main import main as run_snapms_main
+    from src.snapms.main import main as run_snapms_main
 
     snapms_config = SNAPMSConfig(**dict(vars(args)))
     run_snapms_main(snapms_config)
@@ -70,7 +70,7 @@ def handle_add_snapms(args) -> None:
     Appends SnapMS annotations to a CX graph and flags SMILES.
     Mirrors annotation_metadata scripts in rule snapms from Snakefile.
     """
-    from add_snapms.main import main as add_snapms_main
+    from src.add_snapms.main import main as add_snapms_main
 
     add_snapms_main(args)
 

@@ -47,3 +47,4 @@ dependencies:
       - spec2vec>=0.8.0
       - PyQt6>=6.7.1
       - faiss-cpu==1.10.0
+      - -e . 

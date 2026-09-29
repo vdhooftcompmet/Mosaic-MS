@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
-from snapms.snapms import (
+from src.snapms.snapms import (
     _nr_of_unique_compounds,
     add_cluster_numbering,
     add_top_candidate_annotation,
@@ -22,7 +22,7 @@ from snapms.snapms import (
     remove_self_similar_vals,
     remove_small_subgraphs,
 )
-from utils.configs import SNAPMSConfig
+from src.utils.configs import SNAPMSConfig
 
 # --- Fixtures ---
 

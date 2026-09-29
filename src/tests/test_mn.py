@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from matchms import Spectrum
 
-from mn.mn import (
+from src.mn.mn import (
     EdgeData,
     _assign_cluster_ids,
     _extract_graphdata,
@@ -24,7 +24,7 @@ from mn.mn import (
     plain_similarity,
     run_networking,
 )
-from utils.configs import MNConfig
+from src.utils.configs import MNConfig
 
 # --- Fixtures ---
 

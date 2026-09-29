@@ -8,7 +8,7 @@ import tomotopy as tp
 from matchms import Spectrum
 
 # Assuming ms2lda.py and utils/configs.py are in your python path
-from ms2lda.ms2lda import (
+from src.ms2lda.ms2lda import (
     ConvergenceResult,
     _calculate_document_entropy,
     _calculate_topic_entropy,
@@ -22,7 +22,7 @@ from ms2lda.ms2lda import (
     store_model,
     train_model,
 )
-from utils.configs import MS2LDAConfig
+from src.utils.configs import MS2LDAConfig
 
 # --- Fixtures ---
 

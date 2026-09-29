@@ -13,8 +13,8 @@ from ms2deepscore.models import load_model
 from spec2vec import Spec2Vec
 from tqdm import tqdm
 
-from utils.configs import MNConfig
-from utils.context import suppress_output
+from src.utils.configs import MNConfig
+from src.utils.context import suppress_output
 
 
 def plain_similarity(

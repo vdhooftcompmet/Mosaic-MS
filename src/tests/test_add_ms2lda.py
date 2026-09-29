@@ -1,5 +1,6 @@
 import json
 from argparse import Namespace
+from collections.abc import Sequence
 from unittest.mock import MagicMock, patch
 
 import networkx as nx
@@ -7,7 +8,7 @@ import numpy as np
 import pytest
 from matchms import Spectrum
 
-from add_ms2lda.main import (
+from src.add_ms2lda.main import (
     derive_dataset_acquisition_type,
     derive_significant_digits,
     get_topic_words,
@@ -15,7 +16,6 @@ from add_ms2lda.main import (
     parse_spectrum_peaks,
     run_overlap_scores_calculation,
 )
-from typing import Sequence
 
 # --- Fixtures ---
 

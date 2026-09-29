@@ -2,7 +2,7 @@ from pathlib import Path
 
 from matchms.importing import load_from_mgf
 
-from ms2lda.ms2lda import (
+from src.ms2lda.ms2lda import (
     clean_spectra,
     extract_motifs,
     spectra_to_documents,
@@ -10,7 +10,7 @@ from ms2lda.ms2lda import (
     store_model,
     train_model,
 )
-from utils.configs import MS2LDAConfig
+from src.utils.configs import MS2LDAConfig
 
 
 def main(config: MS2LDAConfig) -> None:
