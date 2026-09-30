@@ -1,4 +1,12 @@
 import json
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="builtin type _VocabDict has no __module__ attribute",
+)
+
 from argparse import Namespace
 from collections.abc import Sequence
 from unittest.mock import MagicMock, patch
@@ -15,6 +23,12 @@ from src.add_ms2lda.main import (
     main,
     parse_spectrum_peaks,
     run_overlap_scores_calculation,
+)
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="builtin type _VocabDict has no __module__ attribute",
 )
 
 # --- Fixtures ---

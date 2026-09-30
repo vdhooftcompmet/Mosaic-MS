@@ -1,4 +1,11 @@
 import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="builtin type _VocabDict has no __module__ attribute",
+)
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -137,7 +144,9 @@ def test_spectra_to_documents_dia_ignores_losses(mock_config, sample_spectrum) -
     assert not any(w.startswith("loss@") for w in doc)
 
 
-def test_spectra_to_documents_invalid_acquisition_type(mock_config, sample_spectrum) -> None:
+def test_spectra_to_documents_invalid_acquisition_type(
+    mock_config, sample_spectrum
+) -> None:
     mock_config.dataset_acquisition_type = "INVALID_TYPE"
 
     with pytest.raises(AssertionError):
