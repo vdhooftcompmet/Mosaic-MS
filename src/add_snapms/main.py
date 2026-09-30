@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import networkx as nx
 
-from src.setup.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
+from src.utils.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
 from src.utils.cx import read_annotations, read_cx, write_cx
 from src.utils.progress_bar import track
 

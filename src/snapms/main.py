@@ -3,7 +3,7 @@ from pathlib import Path
 
 import networkx as nx
 
-from src.setup.paths import ANNOTATION_STYLE_FILE
+from src.utils.paths import ANNOTATION_STYLE_FILE
 from src.snapms.snapms import (
     add_cluster_numbering,
     add_top_candidate_annotation,
