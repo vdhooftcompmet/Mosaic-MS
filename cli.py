@@ -1,7 +1,15 @@
 import argparse
 from pathlib import Path
 
-from src.utils.configs import MNConfig, MS2LDAConfig, SNAPMSConfig
+import yaml
+
+from src.utils.configs import (
+    AddMS2LDAConfig,
+    AddSNAPMSConfig,
+    MNConfig,
+    MS2LDAConfig,
+    SNAPMSConfig,
+)
 
 REPO = Path(__file__).parent.resolve()
 DEFAULT_MN_CONFIG = REPO / "config" / "mn.yaml"
@@ -10,10 +18,9 @@ DEFAULT_SNAPMS_CONFIG = REPO / "config" / "snapms.yaml"
 
 
 def prepare_args(
-    args: argparse.Namespace, command_name: str, default_config: Path
+    args: argparse.Namespace, default_config: Path
 ) -> argparse.Namespace:
     """Applies YAML defaults, strips control attributes, and logs parameters."""
-    from src.utils.cli import add_defaults, print_params
 
     args.defaults = args.defaults if args.defaults else str(default_config)
     if args.defaults and Path(args.defaults).exists():
@@ -22,27 +29,45 @@ def prepare_args(
     for key in ("defaults", "func", "command"):
         if hasattr(args, key):
             delattr(args, key)
-
-    print(f"> running {command_name} with parameters:\n")
-    print_params(args)
     return args
+
+
+def add_defaults(params, defaults_path) -> None:
+    if defaults_path is not None:
+        default_params = load_params(defaults_path)
+
+        for k, v in dict(vars(default_params)).items():
+            key_normalized = k.replace("-", "_")
+
+            if not hasattr(params, key_normalized) or (
+                getattr(params, key_normalized) is None
+            ):
+                setattr(params, key_normalized, v)
+
+
+def load_params(path) -> argparse.Namespace:
+    with open(path) as f:
+        params = yaml.safe_load(f)
+    return argparse.Namespace(**params)
 
 
 def handle_run_mn(args) -> None:
     """Executes full Molecular Network (MN) generation workflow."""
-    args = prepare_args(args, "mn", DEFAULT_MN_CONFIG)
+    args = prepare_args(args, DEFAULT_MN_CONFIG)
     from src.mn.main import main as run_mn_main
 
     mn_config = MNConfig(**dict(vars(args)))
+    mn_config.display()
     run_mn_main(mn_config)
 
 
 def handle_run_ms2lda(args) -> None:
     """Executes full MS2LDA workflow."""
-    args = prepare_args(args, "ms2lda", DEFAULT_MS2LDA_CONFIG)
+    args = prepare_args(args, DEFAULT_MS2LDA_CONFIG)
     from src.ms2lda.main import main as run_ms2lda_main
 
     ms2lda_config = MS2LDAConfig(**dict(vars(args)))
+    ms2lda_config.display()
     run_ms2lda_main(ms2lda_config)
 
 
@@ -53,15 +78,18 @@ def handle_add_ms2lda(args) -> None:
     """
     from src.add_ms2lda.main import main as add_ms2lda_main
 
-    add_ms2lda_main(args)
+    add_ms2lda_config = AddMS2LDAConfig(**dict(vars(args)))
+    add_ms2lda_config.display()
+    add_ms2lda_main(add_ms2lda_config)
 
 
 def handle_run_snapms(args) -> None:
     """Executes full SnapMS compound identification workflow."""
-    args = prepare_args(args, "snapms", DEFAULT_SNAPMS_CONFIG)
+    args = prepare_args(args, DEFAULT_SNAPMS_CONFIG)
     from src.snapms.main import main as run_snapms_main
 
     snapms_config = SNAPMSConfig(**dict(vars(args)))
+    snapms_config.display()
     run_snapms_main(snapms_config)
 
 
@@ -72,7 +100,9 @@ def handle_add_snapms(args) -> None:
     """
     from src.add_snapms.main import main as add_snapms_main
 
-    add_snapms_main(args)
+    add_snapms_config = AddSNAPMSConfig(**dict(vars(args)))
+    add_snapms_config.display()
+    add_snapms_main(add_snapms_config)
 
 
 def handle_run_all(args) -> None:
