@@ -1,7 +1,34 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 REPO = Path(__file__).parent.parent.parent.resolve()
+
+
+def _resolve_path(path_str: str) -> str:
+    """Resolve path against REPO if relative; return as-is if already absolute or empty."""
+    if not path_str:
+        return ""
+    p = Path(path_str)
+    if p.is_absolute():
+        return str(p)
+    return str(REPO / p)
+
+
+def _print_formatted_config(header_title: str, instance: object) -> None:
+    """Helper function to print dataclass fields formatted with bullets and borders in order of definition."""
+    cls_fields = fields(instance)
+
+    # Calculate maximum label width dynamically for clean alignment
+    max_label_len = max(len(f.name.replace("_", " ").title()) for f in cls_fields)
+
+    print("=" * 60)
+    print(f"{header_title}:")
+    for f in cls_fields:
+        label = f.name.replace("_", " ").title()
+        val = getattr(instance, f.name)
+        padding = " " * (max_label_len - len(label))
+        print(f"  • {label}:{padding} {val}")
+    print("=" * 60)
 
 
 @dataclass
@@ -41,9 +68,28 @@ class MS2LDAConfig:
     prep_max_intensity: float
 
     def __post_init__(self):
-        self.mgf = str(REPO / self.mgf)
-        self.motifs_path = str(REPO / self.motifs_path)
-        self.model_path = str(REPO / self.model_path)
+        self.mgf = _resolve_path(self.mgf)
+        self.motifs_path = _resolve_path(self.motifs_path)
+        self.model_path = _resolve_path(self.model_path)
+
+    def display(self) -> None:
+        """Display MS2LDA configuration parameters."""
+        _print_formatted_config("MS2LDA Configured Options", self)
+
+
+@dataclass
+class AddMS2LDAConfig:
+    model: str
+    graph: str
+    threshold: float
+
+    def __post_init__(self):
+        self.model = _resolve_path(self.model)
+        self.graph = _resolve_path(self.graph)
+
+    def display(self) -> None:
+        """Display Add MS2LDA configuration parameters."""
+        _print_formatted_config("Add MS2LDA Configured Options", self)
 
 
 @dataclass
@@ -64,9 +110,27 @@ class SNAPMSConfig:
     detect_adduct: bool
 
     def __post_init__(self):
-        self.graph = str(REPO / self.graph)
-        self.reference_db = str(REPO / self.reference_db)
-        self.result_folder = str(REPO / self.result_folder)
+        self.graph = _resolve_path(self.graph)
+        self.reference_db = _resolve_path(self.reference_db)
+        self.result_folder = _resolve_path(self.result_folder)
+
+    def display(self) -> None:
+        """Display SNAPMS configuration parameters."""
+        _print_formatted_config("SNAPMS Configured Options", self)
+
+
+@dataclass
+class AddSNAPMSConfig:
+    graph: str
+    snapms: str
+
+    def __post_init__(self):
+        self.graph = _resolve_path(self.graph)
+        self.snapms = _resolve_path(self.snapms)
+
+    def display(self) -> None:
+        """Display Add SNAPMS configuration parameters."""
+        _print_formatted_config("Add SNAPMS Configured Options", self)
 
 
 @dataclass
@@ -97,12 +161,18 @@ class MNConfig:
     spec2vec_model_path: str = ""
 
     def __post_init__(self):
-        self.mgf = str(REPO / self.mgf)
-        self.folder = str(REPO / self.folder)
-        self.cache_folder = str(REPO / self.cache_folder)
-        self.base_graph_path = str(REPO / self.base_graph_path)
-        self.threshold_graph_path = str(REPO / self.threshold_graph_path)
-        self.rescued_graph_path = str(REPO / self.rescued_graph_path)
+        self.mgf = _resolve_path(self.mgf)
+        self.folder = _resolve_path(self.folder)
+        self.cache_folder = _resolve_path(self.cache_folder)
+        self.base_graph_path = _resolve_path(self.base_graph_path)
+        self.threshold_graph_path = _resolve_path(self.threshold_graph_path)
+        self.rescued_graph_path = _resolve_path(self.rescued_graph_path)
 
-        self.ms2deepscore_model_path = str(REPO / self.ms2deepscore_model_path)
-        self.spec2vec_model_path = str(REPO / self.spec2vec_model_path)
+        if self.ms2deepscore_model_path:
+            self.ms2deepscore_model_path = _resolve_path(self.ms2deepscore_model_path)
+        if self.spec2vec_model_path:
+            self.spec2vec_model_path = _resolve_path(self.spec2vec_model_path)
+
+    def display(self) -> None:
+        """Display MN configuration parameters."""
+        _print_formatted_config("Molecular Networking Configured Options", self)

@@ -7,8 +7,8 @@ import tomotopy as tp
 from matchms import Spectrum
 
 from src.ms2lda.ms2lda import spectra_to_documents
-from src.utils.paths import MN_STYLE_FILE
 from src.utils.cx import read_cx, write_cx
+from src.utils.paths import MN_STYLE_FILE
 from src.utils.progress_bar import track
 
 
@@ -79,7 +79,7 @@ def run_overlap_scores_calculation(
     words_per_spectra = spectra_to_documents(spectra, params)
 
     documents = []
-    for words in track(words_per_spectra, description="running snapms..."):
+    for words in track(words_per_spectra, description="adding results..."):
         words = list(words)
 
         if not words:
