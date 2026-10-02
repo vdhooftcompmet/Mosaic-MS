@@ -1,3 +1,4 @@
+import os
 import shutil
 from argparse import Namespace
 from datetime import datetime
@@ -12,7 +13,7 @@ def load_params(path) -> Namespace:
     return Namespace(**params)
 
 
-def prepare_directory(base_dir, overwrite: bool=False, copy: bool=True):
+def prepare_directory(base_dir, overwrite: bool = False, copy: bool = True):
     if os.path.exists(base_dir):
         if overwrite:
             shutil.rmtree(base_dir)
@@ -33,7 +34,9 @@ def prepare_directory(base_dir, overwrite: bool=False, copy: bool=True):
         return base_dir
 
 
-def save_config(args: Namespace, base_dir: str | Path, name: str="config.yaml") -> None:
+def save_config(
+    args: Namespace, base_dir: str | Path, name: str = "config.yaml"
+) -> None:
     config = vars(args).copy()
     config["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
