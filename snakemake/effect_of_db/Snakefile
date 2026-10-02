@@ -1,0 +1,138 @@
+import os
+import pandas as pd
+from pathlib import Path
+
+REPO = Path(workflow.basedir).parent.parent.resolve()
+workdir: str(REPO)
+print(f"{REPO = }")
+
+# Parameter grids
+SIMILARITY_TYPES = ["cos", "modcos", "spec2vec"] # "ms2deepscore"
+MASK_PERCENTAGES = [0, 10, 25, 50, 75]  # Percentage of entries to remove
+GRAPH_TYPES = ["base", "threshold", "rescued"]
+
+# Input dependencies
+MGF_FILE = "data/test_file.mgf"
+BASE_DB = "data/coconut_db.jsonl"
+
+# Output aggregated table
+FINAL_SUMMARY = "snakemake/effect_of_db/results/final_scores_summary.csv"
+
+
+rule all:
+    input:
+        FINAL_SUMMARY
+
+
+# Step 1: Create masked database variants with varying levels of completeness
+rule mask_db:
+    input:
+        db = BASE_DB
+    output:
+        db = "snakemake/effect_of_db/data/coconut_{mask_pct}pct_masked.jsonl"
+    params:
+        mask_pct = "{mask_pct}"
+    shell:
+        """
+        python -m src.curation.build_masked_structure_db \
+            --input {input.db} \
+            --percent {params.mask_pct} \
+            --output {output.db}
+        """
+
+
+# Step 2: Run Molecular Networking to generate base, threshold, and rescued graphs for each similarity type
+rule run_mn:
+    input:
+        mgf = MGF_FILE
+    output:
+        base = "snakemake/effect_of_db/results/networks/{sim_type}/base.cx",
+        threshold = "snakemake/effect_of_db/results/networks/{sim_type}/threshold.cx",
+        rescued = "snakemake/effect_of_db/results/networks/{sim_type}/rescued.cx"
+    params:
+        sim_type = "{sim_type}",
+        sim_th = lambda wildcards: 8.5 if wildcards.sim_type == "ms2deepscore" else 0.7
+    shell:
+        """
+        python cli.py run-mn \
+            --mgf {input.mgf} \
+            --similarity-type {params.sim_type} \
+            --similarity-threshold {params.sim_th} \
+            --base-graph-path {output.base} \
+            --threshold-graph-path {output.threshold} \
+            --rescued-graph-path {output.rescued}
+        """
+
+
+# Step 3: Run SNAP-MS on a specific graph using masked structure databases
+rule run_snapms:
+    input:
+        graph = "snakemake/effect_of_db/results/networks/{sim_type}/{graph_type}.cx",
+        db = "snakemake/effect_of_db/data/coconut_{mask_pct}pct_masked.jsonl"
+    output:
+        directory("snakemake/effect_of_db/results/snapms/{sim_type}_mask{mask_pct}/{graph_type}_annotations")
+    shell:
+        """
+        python cli.py run-snapms \
+            --graph {input.graph} \
+            --reference-db {input.db} \
+            --result-folder {output}
+        """
+
+
+# Step 4: Score the annotations for a specific graph and database mask configuration
+rule score_graph:
+    input:
+        graph = "snakemake/effect_of_db/results/networks/{sim_type}/{graph_type}.cx",
+        annotations = "snakemake/effect_of_db/results/snapms/{sim_type}_mask{mask_pct}/{graph_type}_annotations"
+    output:
+        csv = "snakemake/effect_of_db/results/scores/{sim_type}_mask{mask_pct}/{graph_type}.csv"
+    shell:
+        """
+        python -m src.benchmark.scoring \
+            -m {input.graph} \
+            -a {input.annotations} \
+            -o {output.csv}
+        """
+
+
+# Step 5: Aggregate all scores across similarity metrics, database masking percentages, and graph types
+rule aggregate_scores:
+    input:
+        scores = expand(
+            "snakemake/effect_of_db/results/scores/{sim_type}_mask{mask_pct}/{graph_type}.csv",
+            sim_type=SIMILARITY_TYPES,
+            mask_pct=MASK_PERCENTAGES,
+            graph_type=GRAPH_TYPES
+        )
+    output:
+        csv = FINAL_SUMMARY
+    run:
+        combined_rows = []
+        for file_path in input.scores:
+            # Extract metadata parameters from file path structure
+            # e.g., 'snakemake/effect_of_db/results/scores/ms2deepscore_mask10/base.csv'
+            parts = file_path.split("/")
+            param_dir = parts[4]       # e.g., 'ms2deepscore_mask10'
+            graph_filename = parts[5]  # e.g., 'base.csv'
+
+            # Parse parameters from directory string
+            sim_type, mask_pct_str = param_dir.split("_mask")
+
+            sim_th = 8.5 if sim_type == "ms2deepscore" else 0.7
+            graph_type = os.path.splitext(graph_filename)[0]
+
+            # Read single-line metric CSV from scoring.py
+            df = pd.read_csv(file_path)
+
+            # Prepend parameter columns
+            df.insert(0, "graph_type", graph_type)
+            df.insert(0, "mask_percentage", float(mask_pct_str))
+            df.insert(0, "db_completeness_pct", 100.0 - float(mask_pct_str))
+            df.insert(0, "similarity_threshold", float(sim_th))
+            df.insert(0, "similarity_type", sim_type)
+
+            combined_rows.append(df)
+
+        final_df = pd.concat(combined_rows, ignore_index=True)
+        final_df.to_csv(output.csv, index=False)
