@@ -20,6 +20,7 @@ def _import_matchms_io():
     """Lazy import for matchms I/O functions."""
     from matchms.exporting import save_as_mgf
     from matchms.importing import load_from_mgf
+
     logging.getLogger("matchms").setLevel(logging.ERROR)
 
     return load_from_mgf, save_as_mgf
@@ -121,7 +122,10 @@ def filter_single_by_metadata(
 
 
 def filter_single_unique_inchikey(spectrum: Any, seen_keys: Set[str]) -> Optional[Any]:
-    """Check single spectrum against seen InChIKeys set. Updates set in-place if key is unique."""
+    """Check single spectrum against seen InChIKeys set (ignoring stereochemistry).
+
+    Updates set in-place if key is unique based on its 14-character connectivity block.
+    """
     ik = (
         spectrum.get("inchikey")
         or spectrum.get("inchi_key")
@@ -135,13 +139,14 @@ def filter_single_unique_inchikey(spectrum: Any, seen_keys: Set[str]) -> Optiona
         return spectrum
 
     ik_clean = str(ik).strip()
-    ik_skeleton = ik_clean.split("-")[0]
 
-    if ik_clean in seen_keys or ik_skeleton in seen_keys:
+    # Extract the first block (14 characters) representing molecular connectivity without stereochemistry
+    ik_block1 = ik_clean.split("-")[0][:14]
+
+    if ik_block1 in seen_keys:
         return None
 
-    seen_keys.add(ik_clean)
-    seen_keys.add(ik_skeleton)
+    seen_keys.add(ik_block1)
     return spectrum
 
 
