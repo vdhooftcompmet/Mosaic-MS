@@ -6,5 +6,10 @@ data/*
 .venv
 cache
 !cache/.gitkeep
-snakemake/.snakemake
+
+.snakemake/
+snakemake/effect_of_db/*
+!snakemake/effect_of_db/Snakefile
+snakemake/effect_of_network/*
+!snakemake/effect_of_network/Snakefile
 .zed
