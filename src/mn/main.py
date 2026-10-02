@@ -14,10 +14,10 @@ from src.mn.mn import (
     plain_similarity,
     run_networking,
 )
-from src.utils.paths import MN_STYLE_FILE
 from src.utils.configs import MNConfig
 from src.utils.cx import write_cx
 from src.utils.folders import prepare_directory
+from src.utils.paths import MN_STYLE_FILE
 
 
 def main(config: MNConfig) -> None:
@@ -41,7 +41,7 @@ def main(config: MNConfig) -> None:
 
 
 def _similarity_cache(
-    fn: Callable
+    fn: Callable,
 ) -> Callable[[list[Spectrum], MNConfig], tuple[np.ndarray, np.ndarray]]:
 
     def inner(
