@@ -12,7 +12,7 @@ MASK_PERCENTAGES = [0, 10, 25, 50, 75]  # Percentage of entries to remove
 GRAPH_TYPES = ["base", "threshold", "rescued"]
 
 # Input dependencies
-MGF_FILE = "data/test_file.mgf"
+MGF_FILE = "data\MSnLib_pos_ms2_merged_filtered_intersection.mgf"
 BASE_DB = "data/coconut_db.jsonl"
 
 # Output aggregated table
