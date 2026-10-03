@@ -13,3 +13,5 @@ snakemake/effect_of_db/*
 snakemake/effect_of_network/*
 !snakemake/effect_of_network/Snakefile
 .zed
+
+.ipynb_checkpoints
