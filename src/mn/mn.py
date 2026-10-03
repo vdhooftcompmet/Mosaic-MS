@@ -53,7 +53,9 @@ def calculate_bootstrapping(
     print(config.B)
     for b in track(range(config.B), description="running specreboot..."):
         try:
-            masked_spectra = _mask_spectra_globally(random_generator, bins, binned_spectra)
+            masked_spectra = _mask_spectra_globally(
+                random_generator, bins, binned_spectra
+            )
 
             with parallel_backend("loky", n_jobs=1):
                 with suppress_output():
@@ -65,7 +67,9 @@ def calculate_bootstrapping(
                     )
 
             top_k_nearest_neighbours = mutual_topk(similarity_matrix, config.k)
-            top_k_nearest_neighbours_binary = (top_k_nearest_neighbours != 0).astype(int)
+            top_k_nearest_neighbours_binary = (top_k_nearest_neighbours != 0).astype(
+                int
+            )
 
             total_pair_similarities += similarity_matrix
             total_edge_support += top_k_nearest_neighbours_binary
@@ -156,7 +160,7 @@ def get_similarity(
             return Spec2Vec(
                 model=w2v,
                 intensity_weighting_power=0.5,
-                allowed_missing_percentage=5.0,
+                allowed_missing_percentage=20.0,
                 progress_bar=False,
             )
 
