@@ -8,8 +8,10 @@ import numpy as np
 import pandas as pd
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
-
+from collections import namedtuple
 from src.utils.configs import SNAPMSConfig
+from typing import Dict
+from dataclasses import dataclass
 
 
 # ATLAS
@@ -34,82 +36,72 @@ ADDUCT_DICT = {
 }
 
 
+@dataclass
+class Adduct:
+    multiplier: int         # Oligomer multiplier (e.g., 1 for [M+H]+, 2 for [2M+H]+)
+    mass_shift: float # Net mass added or lost (in Da)
+    charge: int       # Absolute charge |z|
+
+
+# Monoisotopic constants and electron mass
+ELECTRON_MASS = 0.00054858
+H = 1.007825032 - ELECTRON_MASS
+Na = 22.98976928 - ELECTRON_MASS
+K = 38.96370668 - ELECTRON_MASS
+NH4 = 18.03437413 - ELECTRON_MASS
+Ca = 39.9625909 - (2 * ELECTRON_MASS) # 2+ charge
+H2O = 18.010565
+
+# Pre-calculated net mass offsets (mass_shift = adduct_mass - lost_neutral_mass)
+ADDUCT_RULES: dict[str, Adduct] = {
+    # Single charge [M+...]
+    "[M]+":            Adduct(multiplier=1, mass_shift=0.0, charge=1),
+    "[M+H]+":          Adduct(multiplier=1, mass_shift=H, charge=1),
+    "[M+Na]+":         Adduct(multiplier=1, mass_shift=Na, charge=1),
+    "[M+K]+":          Adduct(multiplier=1, mass_shift=K, charge=1),
+    "[M+NH4]+":        Adduct(multiplier=1, mass_shift=NH4, charge=1),
+    "[M-H2O]+":        Adduct(multiplier=1, mass_shift=-H2O, charge=1),
+    "[M-H2O+H]+":      Adduct(multiplier=1, mass_shift=H - H2O, charge=1),
+    "[M+H-H2O]+":      Adduct(multiplier=1, mass_shift=H - H2O, charge=1),
+    "[M-2H2O+H]+":     Adduct(multiplier=1, mass_shift=H - 2 * H2O, charge=1),
+    "[M+H-2H2O]+":     Adduct(multiplier=1, mass_shift=H - 2 * H2O, charge=1),
+    "[M-3H2O+H]+":     Adduct(multiplier=1, mass_shift=H - 3 * H2O, charge=1),
+    "[M+CH3CN+H]+":    Adduct(multiplier=1, mass_shift=41.026549 + H, charge=1),
+    "[M+CH3OH+H]+":    Adduct(multiplier=1, mass_shift=32.026215 + H, charge=1),
+    "[M+IsoProp+H]+":  Adduct(multiplier=1, mass_shift=60.057515 + H, charge=1),
+    "[M+2Na-H]+":      Adduct(multiplier=1, mass_shift=2 * Na - (1.007825032 + ELECTRON_MASS), charge=1),
+    "[M+2K-H]+":       Adduct(multiplier=1, mass_shift=2 * K - (1.007825032 + ELECTRON_MASS), charge=1),
+
+    # Doubly charged [M...]2+
+    "[M+2H]2+":        Adduct(multiplier=1, mass_shift=2 * H, charge=2),
+    "[M+H+H]2+":       Adduct(multiplier=1, mass_shift=2 * H, charge=2),
+    "[M+2Na]2+":       Adduct(multiplier=1, mass_shift=2 * Na, charge=2),
+    "[M+Ca]2+":        Adduct(multiplier=1, mass_shift=Ca, charge=2),
+    "[M+H+NH4]2+":     Adduct(multiplier=1, mass_shift=H + NH4, charge=2),
+
+    # Dimers [2M+...]
+    "[2M+H]+":         Adduct(multiplier=2, mass_shift=H, charge=1),
+    "[2M+Na]+":        Adduct(multiplier=2, mass_shift=Na, charge=1),
+    "[2M+K]+":         Adduct(multiplier=2, mass_shift=K, charge=1),
+    "[2M-H2O+H]+":     Adduct(multiplier=2, mass_shift=H - H2O, charge=1),
+    "[2M-2H2O+H]+":    Adduct(multiplier=2, mass_shift=H - 2 * H2O, charge=1),
+    "[2M+NH3+H]+":     Adduct(multiplier=2, mass_shift=17.026549 + H, charge=1),
+    "[2M+Ca]2+":       Adduct(multiplier=2, mass_shift=Ca, charge=2),
+
+    # Trimers [3M+...]
+    "[3M+Ca]2+":       Adduct(multiplier=3, mass_shift=Ca, charge=2),
+}
+
+
 def derive_neutral_mass(precursor_mz: float, adduct: str) -> float:
-    if adduct in ADDUCT_DICT:
-        adduct = ADDUCT_DICT[adduct]
+    """Calculate neutral mass from precursor m/z and adduct formula."""
+    resolved_adduct = ADDUCT_DICT.get(adduct, adduct)
 
-    C = 12.011
-    H = 1.0080
-    O = 15.999
-    N = 14.007
-    Na = 22.989218
-    Ca = 40.078
-    K = 38.963158
-    IsoProp = 60.09
+    rule = ADDUCT_RULES.get(resolved_adduct)
+    if not rule:
+        raise ValueError(f"Adduct '{adduct}' not recognized")
 
-    match adduct:
-        case "[M+H]+":
-            return precursor_mz - H
-        case "[M+Na]+":
-            return precursor_mz - Na
-        case "[M+NH4]+":
-            return precursor_mz - N - H * 4
-        case "[M-H2O+H]+":
-            return precursor_mz + (H * 2 + O) - H
-        case "[M+K]+":
-            return precursor_mz - K
-        case "[2M+H]+":
-            return (precursor_mz - H) / 2
-        case "[2M+Na]+":
-            return (precursor_mz - Na) / 2
-        case "[M+H+H]2+":
-            return (precursor_mz * 2) - H * 2
-        case "[M-2H2O+H]+":
-            return precursor_mz + (H * 2 + O * 2) - H
-        case "[M]+":
-            return precursor_mz
-        case "[M-H2O]+":
-            return precursor_mz + (H * 2 + O)
-        case "[M+H-H2O]+":
-            return precursor_mz + (H * 2 + O) - H
-        case "[M+H-2H2O]+":
-            return precursor_mz + (H * 2 + O * 2) - H
-        case "[M+NH3+H]+":
-            return precursor_mz - (N + H * 3) - H
-        case "[M+2H]2+":
-            return (precursor_mz * 2) - (H * 2)
-        case "[M+CH3CN+H]+":
-            return precursor_mz - (C + H * 3 + C + N)
-        case "[2M-2H2O+H]+":
-            return (precursor_mz - (H * 2 + O * 2) - H) / 2
-        case "[2M+Ca]2+":
-            return ((precursor_mz * 2) - Ca) / 2
-        case "[M+CH3OH+H]+":
-            return precursor_mz - (C + H * 3 + O + H) + H
-        case "[M+2Na]2+":
-            return (precursor_mz * 2) - (Na * 2)
-        case "[M+Ca]2+":
-            return (precursor_mz * 2) - Ca
-        case "[M+2Na-H]+":
-            return precursor_mz - (Na * 2) - H
-        case "[2M+NH3+H]+":
-            return (precursor_mz - (N + H * 3) - H) / 2
-        case "[M+IsoProp+H]+":
-            return precursor_mz - IsoProp - H
-        case "[3M+Ca]2+":
-            return ((precursor_mz * 2) - Ca) / 3
-        case "[2M-H2O+H]+":
-            return (precursor_mz + (H * 2 + O) - H) / 2
-        case "[M+2K-H]+":
-            return precursor_mz - (K * 2) + H
-        case "[2M+K]+":
-            return (precursor_mz - K) / 2
-        case "[M+H+NH4]2+":
-            return (precursor_mz * 2) - H - (N + H * 4)
-        case "[M-3H2O+H]+":
-            return precursor_mz - H + 3 * (H * 2 + O)
-
-    raise ValueError("Adduct not recognized")
+    return ((precursor_mz * rule.charge) - rule.mass_shift) / rule.multiplier
 
 
 ADDUCT_ALIASES = ["adduct", "ion"]
@@ -141,15 +133,15 @@ def compute_adduct_matches(
     result: list[dict[str, Any]] = []
 
     for node in nodes:
-        for adduct in get_adducts(mn, node, config):
-            try:
-                precursor_mass = float(mn.nodes[node]["precursor_mz"])
-            except KeyError:
-                print(
-                    f"WARNING: precursor mass not found {mn.nodes[node] = }, ignoring this mass..."
-                )
-                continue
+        try:
+            precursor_mass = float(mn.nodes[node]["precursor_mz"])
+        except KeyError:
+            print(
+                f"WARNING: precursor mass not found {mn.nodes[node] = }, ignoring this mass..."
+            )
+            continue
 
+        for adduct in get_adducts(mn, node, config):
             try:
                 neutral_mass = derive_neutral_mass(precursor_mass, adduct)
             except ValueError:
@@ -158,13 +150,7 @@ def compute_adduct_matches(
 
             motifs = mn.nodes[node].get("motifs", "")
             mass_error = round((neutral_mass * config.ppm_error) / 1e6, 4)
-
-            mask = db_df["neutral_mass"].between(
-                neutral_mass - mass_error, neutral_mass + mass_error
-            )
-            db_matches = db_df.loc[
-                mask, ["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]
-            ].copy()
+            db_matches = search_db(db_df, neutral_mass, mass_error)
 
             if db_matches.empty:
                 continue
@@ -177,6 +163,16 @@ def compute_adduct_matches(
             result.extend(records)
 
     return result
+
+
+def search_db(db_df, neutral_mass, mass_error):
+    mask = db_df["neutral_mass"].between(
+        neutral_mass - mass_error, neutral_mass + mass_error
+    )
+    db_matches = db_df.loc[
+        mask, ["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]
+    ].copy()
+    return db_matches
 
 
 def merge_duplicates(matches: list[dict]) -> list[dict]:
