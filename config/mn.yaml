@@ -7,7 +7,7 @@ seed: 42
 similarity_threshold: 0.7
 
 support_threshold: 0.5
-max_component_size: 20
+max_component_size: 100
 
 rescue_similarity_threshold: 0.3
 use_average_similarity: false
