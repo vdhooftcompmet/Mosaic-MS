@@ -8,12 +8,12 @@ print(f"{REPO = }")
 
 # Parameter grids
 SIMILARITY_TYPES = ["cos", "modcos", "spec2vec", "ms2deepscore"]
-MAX_COMPONENT_SIZES = [10, 20, 50]  # Example values; adjust as needed
+MAX_COMPONENT_SIZES = [10, 20, 50, 100]  # Example values; adjust as needed
 USE_AVERAGE_SIMILARITY = [True, False]
 GRAPH_TYPES = ["base", "threshold", "rescued"]
 
 # Input dependencies
-MGF_FILE = "data/test_file.mgf"
+MGF_FILE = "data/MSnLib_pos_ms2_merged_filtered_intersection.mgf"
 REFERENCE_DB = "data/coconut_db.jsonl"
 
 # Output aggregated table
@@ -35,7 +35,7 @@ rule run_mn:
         rescued = "snakemake/effect_of_network/results/networks/{sim_type}_mcs{mcs}_avg{avg}/rescued.cx"
     params:
         sim_type = "{sim_type}",
-        sim_th = lambda wildcards: 8.5 if wildcards.sim_type == "ms2deepscore" else 0.7,
+        sim_th = lambda wildcards: 0.85 if wildcards.sim_type == "ms2deepscore" else 0.7,
         mcs = "{mcs}",
         avg_flag = lambda wildcards: "--use-average-similarity" if wildcards.avg == "True" else "--no-use-average-similarity"
     shell:
@@ -108,7 +108,7 @@ rule aggregate_scores:
             sim_type, rest = param_dir.split("_mcs")
             mcs_str, avg_str = rest.split("_avg")
 
-            sim_th = 8.5 if sim_type == "ms2deepscore" else 0.7
+            sim_th = 0.85 if sim_type == "ms2deepscore" else 0.7
             graph_type = os.path.splitext(graph_filename)[0]
 
             # Read single-line metric CSV from scoring.py

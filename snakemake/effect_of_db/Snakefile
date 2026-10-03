@@ -7,12 +7,12 @@ workdir: str(REPO)
 print(f"{REPO = }")
 
 # Parameter grids
-SIMILARITY_TYPES = ["cos", "modcos", "spec2vec"] # "ms2deepscore"
-MASK_PERCENTAGES = [0, 10, 25, 50, 75]  # Percentage of entries to remove
+SIMILARITY_TYPES = ["cos", "modcos", "spec2vec", "ms2deepscore"]
+MASK_PERCENTAGES = [0, 10, 20, 30, 40, 50, 60, 80, 99]  # Percentage of entries to remove
 GRAPH_TYPES = ["base", "threshold", "rescued"]
 
 # Input dependencies
-MGF_FILE = "data\MSnLib_pos_ms2_merged_filtered_intersection.mgf"
+MGF_FILE = "data/MSnLib_pos_ms2_merged_filtered_intersection.mgf"
 BASE_DB = "data/coconut_db.jsonl"
 
 # Output aggregated table
@@ -51,7 +51,7 @@ rule run_mn:
         rescued = "snakemake/effect_of_db/results/networks/{sim_type}/rescued.cx"
     params:
         sim_type = "{sim_type}",
-        sim_th = lambda wildcards: 8.5 if wildcards.sim_type == "ms2deepscore" else 0.7
+        sim_th = lambda wildcards: 0.85 if wildcards.sim_type == "ms2deepscore" else 0.7
     shell:
         """
         python cli.py run-mn \
@@ -119,7 +119,7 @@ rule aggregate_scores:
             # Parse parameters from directory string
             sim_type, mask_pct_str = param_dir.split("_mask")
 
-            sim_th = 8.5 if sim_type == "ms2deepscore" else 0.7
+            sim_th = 0.85 if sim_type == "ms2deepscore" else 0.7
             graph_type = os.path.splitext(graph_filename)[0]
 
             # Read single-line metric CSV from scoring.py
