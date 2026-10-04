@@ -110,17 +110,16 @@ rule aggregate_scores:
     run:
         combined_rows = []
         for file_path in input.scores:
-            # Extract metadata parameters from file path structure
-            # e.g., 'snakemake/effect_of_db/results/scores/ms2deepscore_mask10/base.csv'
-            parts = file_path.split("/")
-            param_dir = parts[4]       # e.g., 'ms2deepscore_mask10'
-            graph_filename = parts[5]  # e.g., 'base.csv'
+            # Safe, platform-independent path parsing
+            p = Path(file_path)
+            
+            graph_type = p.stem              # e.g., 'base'
+            param_dir = p.parent.name         # e.g., 'ms2deepscore_mask10'
 
             # Parse parameters from directory string
             sim_type, mask_pct_str = param_dir.split("_mask")
 
             sim_th = 0.85 if sim_type == "ms2deepscore" else 0.7
-            graph_type = os.path.splitext(graph_filename)[0]
 
             # Read single-line metric CSV from scoring.py
             df = pd.read_csv(file_path)

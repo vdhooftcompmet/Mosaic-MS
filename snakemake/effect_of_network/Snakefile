@@ -8,7 +8,7 @@ print(f"{REPO = }")
 
 # Parameter grids
 SIMILARITY_TYPES = ["cos", "modcos", "spec2vec", "ms2deepscore"]
-MAX_COMPONENT_SIZES = [10, 20, 50, 100]  # Example values; adjust as needed
+MAX_COMPONENT_SIZES = [10, 20, 50, 100] 
 USE_AVERAGE_SIMILARITY = [True, False]
 GRAPH_TYPES = ["base", "threshold", "rescued"]
 
@@ -99,17 +99,18 @@ rule aggregate_scores:
     run:
         combined_rows = []
         for file_path in input.scores:
-            # Extract metadata parameters from file path structure
-            parts = file_path.split("/")
-            param_dir = parts[2]       # e.g., 'ms2deepscore_mcs20_avgTrue'
-            graph_filename = parts[3]  # e.g., 'base.csv'
+            # Normalize path slashes across OS platforms
+            p = Path(file_path)
+            
+            # Extract metadata safely using Path parts
+            graph_type = p.stem                            # e.g., 'base'
+            param_dir = p.parent.name                       # e.g., 'cos_mcs50_avgFalse'
 
-            # Parse parameters from directory string
+            # Parse parameters from directory name
             sim_type, rest = param_dir.split("_mcs")
             mcs_str, avg_str = rest.split("_avg")
 
             sim_th = 0.85 if sim_type == "ms2deepscore" else 0.7
-            graph_type = os.path.splitext(graph_filename)[0]
 
             # Read single-line metric CSV from scoring.py
             df = pd.read_csv(file_path)
