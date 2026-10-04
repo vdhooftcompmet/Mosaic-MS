@@ -82,6 +82,7 @@ def _make_cache_name(file_type: str, config: MNConfig) -> str:
 
     hasher.update(str(config.similarity_type).lower().encode("utf-8"))
     hasher.update(str(file_type).lower().encode("utf-8"))
+    hasher.update(str(config.k).lower().encode("utf-8"))
     hasher.update(str(config.B).lower().encode("utf-8"))
     hasher.update(str(config.seed).lower().encode("utf-8"))
     hexadecimal_string = hasher.hexdigest()
