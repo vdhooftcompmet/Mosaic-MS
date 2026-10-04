@@ -37,6 +37,7 @@ dependencies:
   - rich
   - pulp==2.7.0
   - pytest
+  - duckdb 
 
   # PyPI-only dependencies
   - pip:

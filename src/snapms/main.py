@@ -22,7 +22,7 @@ from src.utils.progress_bar import track
 
 
 def main(config: SNAPMSConfig) -> None:
-    atlas_df = import_atlas(config)
+    atlas_con = import_atlas(config)
 
     file = Path(config.graph)
 
@@ -45,7 +45,7 @@ def main(config: SNAPMSConfig) -> None:
         if len(nodes) > config.max_cluster_size:
             continue
 
-        matches = compute_adduct_matches(mn, nodes, config, atlas_df)
+        matches = compute_adduct_matches(mn, nodes, config, atlas_con)
         matches = merge_duplicates(
             matches
         )  # nodes with the same or very similar masses lead to multiple copies of compounds, here we merge them into one

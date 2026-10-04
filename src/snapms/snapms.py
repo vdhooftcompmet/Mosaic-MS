@@ -1,28 +1,31 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
+import duckdb
 import networkx as nx
 import numpy as np
 import pandas as pd
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
-from collections import namedtuple
+
 from src.utils.configs import SNAPMSConfig
-from typing import Dict
-from dataclasses import dataclass
 
 
 # ATLAS
-def import_atlas(config: SNAPMSConfig) -> pd.DataFrame:
+def import_atlas(config: SNAPMSConfig) -> duckdb.DuckDBPyConnection:
     db_path = Path(config.reference_db)
 
     if not db_path.exists():
         raise FileNotFoundError(f"Reference DB file not found at: {db_path.resolve()}")
-    input_df = pd.read_json(str(config.reference_db), lines=True)
 
-    return input_df
+    con = duckdb.connect()
+    con.execute(f"CREATE TABLE df AS SELECT * FROM read_json_auto('{db_path.as_posix()}')")
+    con.execute("CREATE INDEX idx_val ON df(neutral_mass)")
+
+    return con
 
 
 ADDUCT_DICT = {
@@ -38,9 +41,9 @@ ADDUCT_DICT = {
 
 @dataclass
 class Adduct:
-    multiplier: int         # Oligomer multiplier (e.g., 1 for [M+H]+, 2 for [2M+H]+)
-    mass_shift: float # Net mass added or lost (in Da)
-    charge: int       # Absolute charge |z|
+    multiplier: int  # Oligomer multiplier (e.g., 1 for [M+H]+, 2 for [2M+H]+)
+    mass_shift: float  # Net mass added or lost (in Da)
+    charge: int  # Absolute charge |z|
 
 
 # Monoisotopic constants and electron mass
@@ -49,47 +52,48 @@ H = 1.007825032 - ELECTRON_MASS
 Na = 22.98976928 - ELECTRON_MASS
 K = 38.96370668 - ELECTRON_MASS
 NH4 = 18.03437413 - ELECTRON_MASS
-Ca = 39.9625909 - (2 * ELECTRON_MASS) # 2+ charge
+Ca = 39.9625909 - (2 * ELECTRON_MASS)  # 2+ charge
 H2O = 18.010565
 
 # Pre-calculated net mass offsets (mass_shift = adduct_mass - lost_neutral_mass)
 ADDUCT_RULES: dict[str, Adduct] = {
     # Single charge [M+...]
-    "[M]+":            Adduct(multiplier=1, mass_shift=0.0, charge=1),
-    "[M+H]+":          Adduct(multiplier=1, mass_shift=H, charge=1),
-    "[M+Na]+":         Adduct(multiplier=1, mass_shift=Na, charge=1),
-    "[M+K]+":          Adduct(multiplier=1, mass_shift=K, charge=1),
-    "[M+NH4]+":        Adduct(multiplier=1, mass_shift=NH4, charge=1),
-    "[M-H2O]+":        Adduct(multiplier=1, mass_shift=-H2O, charge=1),
-    "[M-H2O+H]+":      Adduct(multiplier=1, mass_shift=H - H2O, charge=1),
-    "[M+H-H2O]+":      Adduct(multiplier=1, mass_shift=H - H2O, charge=1),
-    "[M-2H2O+H]+":     Adduct(multiplier=1, mass_shift=H - 2 * H2O, charge=1),
-    "[M+H-2H2O]+":     Adduct(multiplier=1, mass_shift=H - 2 * H2O, charge=1),
-    "[M-3H2O+H]+":     Adduct(multiplier=1, mass_shift=H - 3 * H2O, charge=1),
-    "[M+CH3CN+H]+":    Adduct(multiplier=1, mass_shift=41.026549 + H, charge=1),
-    "[M+CH3OH+H]+":    Adduct(multiplier=1, mass_shift=32.026215 + H, charge=1),
-    "[M+IsoProp+H]+":  Adduct(multiplier=1, mass_shift=60.057515 + H, charge=1),
-    "[M+2Na-H]+":      Adduct(multiplier=1, mass_shift=2 * Na - (1.007825032 + ELECTRON_MASS), charge=1),
-    "[M+2K-H]+":       Adduct(multiplier=1, mass_shift=2 * K - (1.007825032 + ELECTRON_MASS), charge=1),
-
+    "[M]+": Adduct(multiplier=1, mass_shift=0.0, charge=1),
+    "[M+H]+": Adduct(multiplier=1, mass_shift=H, charge=1),
+    "[M+Na]+": Adduct(multiplier=1, mass_shift=Na, charge=1),
+    "[M+K]+": Adduct(multiplier=1, mass_shift=K, charge=1),
+    "[M+NH4]+": Adduct(multiplier=1, mass_shift=NH4, charge=1),
+    "[M-H2O]+": Adduct(multiplier=1, mass_shift=-H2O, charge=1),
+    "[M-H2O+H]+": Adduct(multiplier=1, mass_shift=H - H2O, charge=1),
+    "[M+H-H2O]+": Adduct(multiplier=1, mass_shift=H - H2O, charge=1),
+    "[M-2H2O+H]+": Adduct(multiplier=1, mass_shift=H - 2 * H2O, charge=1),
+    "[M+H-2H2O]+": Adduct(multiplier=1, mass_shift=H - 2 * H2O, charge=1),
+    "[M-3H2O+H]+": Adduct(multiplier=1, mass_shift=H - 3 * H2O, charge=1),
+    "[M+CH3CN+H]+": Adduct(multiplier=1, mass_shift=41.026549 + H, charge=1),
+    "[M+CH3OH+H]+": Adduct(multiplier=1, mass_shift=32.026215 + H, charge=1),
+    "[M+IsoProp+H]+": Adduct(multiplier=1, mass_shift=60.057515 + H, charge=1),
+    "[M+2Na-H]+": Adduct(
+        multiplier=1, mass_shift=2 * Na - (1.007825032 + ELECTRON_MASS), charge=1
+    ),
+    "[M+2K-H]+": Adduct(
+        multiplier=1, mass_shift=2 * K - (1.007825032 + ELECTRON_MASS), charge=1
+    ),
     # Doubly charged [M...]2+
-    "[M+2H]2+":        Adduct(multiplier=1, mass_shift=2 * H, charge=2),
-    "[M+H+H]2+":       Adduct(multiplier=1, mass_shift=2 * H, charge=2),
-    "[M+2Na]2+":       Adduct(multiplier=1, mass_shift=2 * Na, charge=2),
-    "[M+Ca]2+":        Adduct(multiplier=1, mass_shift=Ca, charge=2),
-    "[M+H+NH4]2+":     Adduct(multiplier=1, mass_shift=H + NH4, charge=2),
-
+    "[M+2H]2+": Adduct(multiplier=1, mass_shift=2 * H, charge=2),
+    "[M+H+H]2+": Adduct(multiplier=1, mass_shift=2 * H, charge=2),
+    "[M+2Na]2+": Adduct(multiplier=1, mass_shift=2 * Na, charge=2),
+    "[M+Ca]2+": Adduct(multiplier=1, mass_shift=Ca, charge=2),
+    "[M+H+NH4]2+": Adduct(multiplier=1, mass_shift=H + NH4, charge=2),
     # Dimers [2M+...]
-    "[2M+H]+":         Adduct(multiplier=2, mass_shift=H, charge=1),
-    "[2M+Na]+":        Adduct(multiplier=2, mass_shift=Na, charge=1),
-    "[2M+K]+":         Adduct(multiplier=2, mass_shift=K, charge=1),
-    "[2M-H2O+H]+":     Adduct(multiplier=2, mass_shift=H - H2O, charge=1),
-    "[2M-2H2O+H]+":    Adduct(multiplier=2, mass_shift=H - 2 * H2O, charge=1),
-    "[2M+NH3+H]+":     Adduct(multiplier=2, mass_shift=17.026549 + H, charge=1),
-    "[2M+Ca]2+":       Adduct(multiplier=2, mass_shift=Ca, charge=2),
-
+    "[2M+H]+": Adduct(multiplier=2, mass_shift=H, charge=1),
+    "[2M+Na]+": Adduct(multiplier=2, mass_shift=Na, charge=1),
+    "[2M+K]+": Adduct(multiplier=2, mass_shift=K, charge=1),
+    "[2M-H2O+H]+": Adduct(multiplier=2, mass_shift=H - H2O, charge=1),
+    "[2M-2H2O+H]+": Adduct(multiplier=2, mass_shift=H - 2 * H2O, charge=1),
+    "[2M+NH3+H]+": Adduct(multiplier=2, mass_shift=17.026549 + H, charge=1),
+    "[2M+Ca]2+": Adduct(multiplier=2, mass_shift=Ca, charge=2),
     # Trimers [3M+...]
-    "[3M+Ca]2+":       Adduct(multiplier=3, mass_shift=Ca, charge=2),
+    "[3M+Ca]2+": Adduct(multiplier=3, mass_shift=Ca, charge=2),
 }
 
 
@@ -128,7 +132,7 @@ def compute_adduct_matches(
     mn: nx.Graph,
     nodes: dict[Any, Any] | Sequence[Any],
     config: SNAPMSConfig,
-    db_df: pd.DataFrame,
+    db_con: duckdb.DuckDBPyConnection,
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
 
@@ -150,7 +154,7 @@ def compute_adduct_matches(
 
             motifs = mn.nodes[node].get("motifs", "")
             mass_error = round((neutral_mass * config.ppm_error) / 1e6, 4)
-            db_matches = search_db(db_df, neutral_mass, mass_error)
+            db_matches = search_db(db_con, neutral_mass, mass_error)
 
             if db_matches.empty:
                 continue
@@ -165,13 +169,20 @@ def compute_adduct_matches(
     return result
 
 
-def search_db(db_df, neutral_mass, mass_error):
-    mask = db_df["neutral_mass"].between(
-        neutral_mass - mass_error, neutral_mass + mass_error
-    )
-    db_matches = db_df.loc[
-        mask, ["neutral_mass", "smiles", "inchikey", "morgan_fingerprint"]
-    ].copy()
+def search_db(
+    db_con: duckdb.DuckDBPyConnection, neutral_mass: float, mass_error: float
+):
+    lower_bound = neutral_mass - mass_error
+    upper_bound = neutral_mass + mass_error
+
+    db_matches = db_con.execute(
+        """
+        SELECT neutral_mass, smiles, inchikey, morgan_fingerprint
+        FROM df
+        WHERE neutral_mass BETWEEN ? AND ?
+        """,
+        [lower_bound, upper_bound],
+    ).df()
     return db_matches
 
 
