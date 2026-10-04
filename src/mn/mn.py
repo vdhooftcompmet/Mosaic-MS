@@ -169,7 +169,7 @@ def get_similarity(
 
 
 def _mask_spectra_globally(
-    random_generator, global_bins: np.ndarray, binned_spectra: np.ndarray
+    random_generator, global_bins: np.ndarray, binned_spectra: list[Spectrum]
 ) -> list[Spectrum]:
     result = []
 
