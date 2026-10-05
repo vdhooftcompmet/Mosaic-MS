@@ -300,8 +300,6 @@ def build_graph(
             metadata |= dict(edge_class=str(lbl))
         G.add_edge(u, v, **metadata)
 
-    _assign_cluster_ids(G)
-
     return G
 
 
@@ -393,13 +391,6 @@ def _filter_components(
     mask = mask.astype(bool)
     edge_data = EdgeData(*(arr[mask] for arr in edge_data))
     return edge_data
-
-
-def _assign_cluster_ids(graph: nx.Graph) -> None:
-    components = sorted(nx.connected_components(graph), key=len, reverse=True)
-    for cid, comp in enumerate(components):
-        for node in comp:
-            graph.nodes[node]["component"] = cid
 
 
 def add_cluster_numbering(graph: nx.Graph) -> None:
