@@ -32,12 +32,13 @@ dependencies:
   - dash-extensions==1.0.20
   - snakemake>=7.32.4
   - ndex2
-  - ms2deepscore=2.6
+  - ms2deepscore=2.11
   - python-dateutil
   - rich
   - pulp==2.7.0
   - pytest
   - duckdb 
+  - onnxruntime
 
   # PyPI-only dependencies
   - pip:
