@@ -1,0 +1,124 @@
+import os
+import pandas as pd
+from pathlib import Path
+
+REPO = Path(workflow.basedir).parent.parent.resolve()
+workdir: str(REPO)
+print(f"{REPO = }")
+
+# Parameter grids
+SIMILARITY_TYPES = ["cos", "modcos", "spec2vec", "ms2deepscore"]
+GRAPH_TYPES = ["base", "threshold", "rescued"]
+K_VALUES = [5, 10, 20, 30, 40, 60]
+
+# Input dependencies
+MGF_FILE = "data/MSnLib_pos_ms2_merged_filtered_intersection.mgf"
+REFERENCE_DB = "data/coconut_db.jsonl"
+
+# Output aggregated table
+FINAL_SUMMARY = "snakemake/effect_of_k/results/final_scores_summary.csv"
+
+
+rule all:
+    input:
+        FINAL_SUMMARY
+
+
+# Step 1: Run Molecular Networking to generate base, threshold, and rescued graphs for a parameter set
+rule run_mn:
+    input:
+        mgf = MGF_FILE
+    output:
+        base = "snakemake/effect_of_k/results/networks/{sim_type}_k{k}/base.cx",
+        threshold = "snakemake/effect_of_k/results/networks/{sim_type}_k{k}/threshold.cx",
+        rescued = "snakemake/effect_of_k/results/networks/{sim_type}_k{k}/rescued.cx"
+    params:
+        sim_type = "{sim_type}",
+        k_val = "{k}", 
+        sim_th = lambda wildcards: 0.85 if wildcards.sim_type == "ms2deepscore" else 0.7,
+    shell:
+        """
+        python cli.py run-mn \
+            --mgf {input.mgf} \
+            --k {params.k_val} \
+            --similarity-type {params.sim_type} \
+            --similarity-threshold {params.sim_th} \
+            --base-graph-path {output.base} \
+            --threshold-graph-path {output.threshold} \
+            --rescued-graph-path {output.rescued}
+        """
+
+
+# Step 2: Run SNAP-MS on a specific graph (.cx file)
+rule run_snapms:
+    input:
+        graph = "snakemake/effect_of_k/results/networks/{sim_type}_k{k}/{graph_type}.cx",
+        db = REFERENCE_DB
+    output:
+        directory("snakemake/effect_of_k/results/snapms/{sim_type}_k{k}/{graph_type}_annotations")
+    shell:
+        """
+        python cli.py run-snapms \
+            --graph {input.graph} \
+            --reference-db {input.db} \
+            --result-folder {output}
+        """
+
+
+# Step 3: Score the annotations for a specific graph configuration
+rule score_graph:
+    input:
+        graph = "snakemake/effect_of_k/results/networks/{sim_type}_k{k}/{graph_type}.cx",
+        annotations = "snakemake/effect_of_k/results/snapms/{sim_type}_k{k}/{graph_type}_annotations"
+    output:
+        csv = "snakemake/effect_of_k/results/scores/{sim_type}_k{k}/{graph_type}.csv"
+    shell:
+        """
+        python -m src.benchmark.scoring \
+            -m {input.graph} \
+            -a {input.annotations} \
+            -o {output.csv}
+        """
+
+
+# Step 4: Aggregate all scores into a single final CSV file
+rule aggregate_scores:
+    input:
+        scores = expand(
+            "snakemake/effect_of_k/results/scores/{sim_type}_k{k}/{graph_type}.csv",
+            sim_type=SIMILARITY_TYPES,
+            graph_type=GRAPH_TYPES, 
+            k=K_VALUES, 
+        )
+    output:
+        csv = FINAL_SUMMARY
+    run:
+        combined_rows = []
+        for file_path in input.scores:
+            # Normalize path slashes across OS platforms
+            p = Path(file_path).resolve()
+            
+            # Extract metadata safely using Path parts
+            graph_type = p.stem                            # e.g., 'base'
+            param_dir = p.parent.name                       # e.g., 'cos_k20'
+
+            # Parse parameters from directory name
+            
+            sim_type, rest = param_dir.split("_k", 1)
+            k_val = int(rest)
+
+            sim_th = 0.85 if sim_type == "ms2deepscore" else 0.7
+
+            # Read single-line metric CSV from scoring.py
+            df = pd.read_csv(file_path)
+
+            # Prepend parameter columns
+            df.insert(0, "graph_type", graph_type)
+            df.insert(0, "k", k_val)
+            df.insert(0, "similarity_threshold", float(sim_th))
+            df.insert(0, "similarity_type", sim_type)
+
+            combined_rows.append(df)
+
+        final_df = pd.concat(combined_rows, ignore_index=True)
+        final_df.to_csv(output.csv, index=False)
