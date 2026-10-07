@@ -156,7 +156,6 @@ class AddSNAPMSConfig:
 @dataclass
 class MNConfig:
     mgf: str
-    folder: str
     cache_folder: str
     similarity_type: str
     base_graph_path: str
@@ -182,7 +181,6 @@ class MNConfig:
 
     def __post_init__(self):
         self.mgf = _resolve_path(self.mgf)
-        self.folder = _resolve_path(self.folder)
         self.cache_folder = _resolve_path(self.cache_folder)
         self.base_graph_path = _resolve_path(self.base_graph_path)
         self.threshold_graph_path = _resolve_path(self.threshold_graph_path)
