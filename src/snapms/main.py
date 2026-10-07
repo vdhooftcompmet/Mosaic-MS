@@ -8,6 +8,7 @@ from src.snapms.snapms import (
     add_top_candidate_annotation,
     compute_adduct_matches,
     get_edges,
+    group_nodes,
     import_atlas,
     merge_duplicates,
     remove_edges_with_same_value_for,
@@ -32,14 +33,9 @@ def main(config: SNAPMSConfig) -> None:
     if not Path(annotation_folder).exists():
         prepare_directory(annotation_folder)
 
-    clusters: dict[int, list[int]] = defaultdict(list)
-    for node in mn:
-        mn_cluster_id = mn.nodes[node]["mn_cluster_id"]
-        clusters[mn_cluster_id].append(node)
+    groups = group_nodes(mn)
 
-    for mn_cluster_id, nodes in track(
-        clusters.items(), description="running snap-ms..."
-    ):
+    for identifier, nodes in track(groups.items(), description="running snap-ms..."):
         if len(nodes) < config.min_cluster_size:
             continue
         if len(nodes) > config.max_cluster_size:
@@ -70,8 +66,8 @@ def main(config: SNAPMSConfig) -> None:
         add_cluster_numbering(graph)
         add_top_candidate_annotation(graph)
 
-        values = {node: mn_cluster_id for node in graph.nodes}
+        values = {node: identifier for node in graph.nodes}
         nx.set_node_attributes(G=graph, values=values, name="mn_cluster_id")
 
-        save_path = str(annotation_folder / f"graph-{mn_cluster_id}.cx")
+        save_path = str(annotation_folder / f"graph-{identifier}.cx")
         write_cx(graph, save_path, ANNOTATION_STYLE_FILE)

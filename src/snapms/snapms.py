@@ -322,4 +322,12 @@ def add_cluster_numbering(graph: nx.Graph) -> None:
     for cluster in ordered_clusters:
         i = get_unique_id()
         for node in cluster:
-            graph.nodes[node]["mn_cluster_id"] = i
+            graph.nodes[node]["parent_cluster"] = i
+
+
+def group_nodes(graph: nx.Graph) -> defaultdict:
+    groups: dict[int, list[int]] = defaultdict(list)
+    for node in graph:
+        mn_cluster_id = graph.nodes[node]["mn_cluster_id"]
+        groups[mn_cluster_id].append(node)
+    return groups
