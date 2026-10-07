@@ -1,0 +1,5 @@
+spec2vec-model-path: data/Spec2VecModel.model
+library: data/MSnLib_pos_ms2_merged.mgf # FIXME: not in default downloaded dataset!
+threshold: 0.6
+cluster-delta: 0.6
+criterium: biggest
