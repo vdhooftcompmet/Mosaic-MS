@@ -22,7 +22,9 @@ def import_atlas(config: SNAPMSConfig) -> duckdb.DuckDBPyConnection:
         raise FileNotFoundError(f"Reference DB file not found at: {db_path.resolve()}")
 
     con = duckdb.connect()
-    con.execute(f"CREATE TABLE df AS SELECT * FROM read_json_auto('{db_path.as_posix()}')")
+    con.execute(
+        f"CREATE TABLE df AS SELECT * FROM read_json_auto('{db_path.as_posix()}')"
+    )
     con.execute("CREATE INDEX idx_val ON df(neutral_mass)")
 
     return con
@@ -298,7 +300,7 @@ def remove_small_subgraphs(graph: nx.Graph, config: SNAPMSConfig) -> None:
 
 def add_top_candidate_annotation(graph: nx.Graph) -> None:
     clusters = [x for x in nx.connected_components(graph)]
-    counts = [_nr_of_unique_compounds(graph, c, "mn_node_id") for c in clusters]
+    counts = [_nr_of_unique_compounds(graph, c) for c in clusters]
 
     for c, nodes in zip(counts, clusters):
         for node in nodes:
@@ -310,9 +312,35 @@ def add_top_candidate_annotation(graph: nx.Graph) -> None:
             graph.nodes[node]["ann_mass_diversity"] = c
 
 
-def _nr_of_unique_compounds(graph: nx.Graph, nodes: set, key: str) -> int:
-    all_compounds = {graph.nodes[node][key] for node in nodes}
-    return len(all_compounds)
+def _nr_of_unique_compounds(graph: nx.Graph, nodes: set) -> int:
+    # This covers an edge case where we may have overlapping ranges of masses.
+    # MolA may be queried by node1 & node2, MolB might be queried by node2 and node3 (molB might be just outside the mass range of node1 ).
+    # This code merges mass1, mass2 & node3 into ONE group,
+    # MolA and MolB are thus counted as the same mass.
+    # This prevents edge cases where very similar masses are counted twice due to slightly different mass ranges,
+    # which would inflate the mass diversity count where no meaningful diversity exists.
+
+    mass_clusters = []
+    for node in nodes:
+        node_ids = graph.nodes[node]["mn_node_id"]
+        new_mass_cluster = {int(x) for x in node_ids.split(";")}
+
+        for mass_cluster in mass_clusters:
+            if new_mass_cluster & mass_cluster:
+                mass_cluster.add(new_mass_cluster)
+                break
+
+    deduplicated = []
+    while mass_clusters:
+        cat = mass_clusters.pop()
+        for existing_cat in deduplicated:
+            if existing_cat & cat:
+                existing_cat.add(cat)
+                break
+        else:
+            deduplicated.append(cat)
+
+    return len(deduplicated)
 
 
 def add_cluster_numbering(graph: nx.Graph) -> None:
