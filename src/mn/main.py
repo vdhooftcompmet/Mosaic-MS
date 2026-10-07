@@ -11,6 +11,7 @@ from scipy.sparse import csr_matrix, load_npz, save_npz
 from src.mn.mn import (
     add_cluster_numbering,
     calculate_bootstrapping,
+    clean_mgf,
     plain_similarity,
     run_networking,
 )
@@ -88,16 +89,3 @@ def _make_cache_name(file_type: str, config: MNConfig) -> str:
     hexadecimal_string = hasher.hexdigest()
     file_name = f"{config.similarity_type}-{hexadecimal_string[:20]}.npz"
     return file_name
-
-
-def clean_mgf(path: Path | str) -> list[Spectrum]:
-    assert isinstance(path, (str, Path)), "path must be a Path object or a string"
-
-    spectra = list(load_from_mgf(path))
-    spectrum_processor = SpectrumProcessor(DEFAULT_FILTERS + CLEAN_PEAKS)
-    result, _ = spectrum_processor.process_spectra(spectra, progress_bar=False)
-
-    for i, spectrum in enumerate(result):
-        spectrum.set("spectrum_id", i)
-
-    return result

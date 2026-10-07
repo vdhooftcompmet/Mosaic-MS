@@ -400,3 +400,16 @@ def add_cluster_numbering(graph: nx.Graph) -> None:
     for i, cluster in enumerate(ordered_clusters):
         for node in cluster:
             graph.nodes[node]["mn_cluster_id"] = i
+
+
+def clean_mgf(path: Path | str) -> list[Spectrum]:
+    assert isinstance(path, (str, Path)), "path must be a Path object or a string"
+
+    spectra = list(load_from_mgf(path))
+    spectrum_processor = SpectrumProcessor(DEFAULT_FILTERS + CLEAN_PEAKS)
+    result, _ = spectrum_processor.process_spectra(spectra, progress_bar=False)
+
+    for i, spectrum in enumerate(result):
+        spectrum.set("spectrum_id", i)
+
+    return result
