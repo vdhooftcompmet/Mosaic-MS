@@ -1,5 +1,6 @@
 import logging
 import warnings
+from argparse import Namespace
 from collections import namedtuple
 from collections.abc import Generator
 from pathlib import Path
@@ -52,7 +53,7 @@ def clean_spectra(
 
 
 def spectra_to_documents(
-    spectra: list[Spectrum], config: MS2LDAConfig
+    spectra: list[Spectrum], config: MS2LDAConfig | Namespace
 ) -> list[list[str]]:
 
     assert config.dataset_acquisition_type in ["DDA", "DIA"]
@@ -132,7 +133,10 @@ def train_model(
         category=RuntimeWarning,
     )
 
-    for i in track(range(0, config.iterations, config.conv_step_size), description="running ms2lda..."):
+    for i in track(
+        range(0, config.iterations, config.conv_step_size),
+        description="running ms2lda...",
+    ):
         model.train(
             config.conv_step_size, **train_parameters
         )  # model is doing x amount (step size) of iterations

@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 
 from src.utils.configs import (
+    AddMAGConfig,
     AddMS2LDAConfig,
     AddSNAPMSConfig,
     MNConfig,
@@ -14,7 +15,10 @@ from src.utils.configs import (
 REPO = Path(__file__).parent.resolve()
 DEFAULT_MN_CONFIG = REPO / "config" / "mn.yaml"
 DEFAULT_MS2LDA_CONFIG = REPO / "config" / "ms2lda.yaml"
+DEFAULT_ADD_MS2LDA_CONFIG = REPO / "config" / "add_ms2lda.yaml"
+DEFAULT_ADD_MAG_CONFIG = REPO / "config" / "add_mag.yaml"
 DEFAULT_SNAPMS_CONFIG = REPO / "config" / "snapms.yaml"
+DEFAULT_ADD_SNAPMS_CONFIG = REPO / "config" / "add_snapms.yaml"
 
 
 def prepare_args(
@@ -22,7 +26,7 @@ def prepare_args(
 ) -> argparse.Namespace:
     """Applies YAML defaults, strips control attributes, and logs parameters."""
 
-    args.defaults = args.defaults if args.defaults else str(default_config)
+    args.defaults = args.defaults if getattr(args, "defaults", None) else str(default_config)
     if args.defaults and Path(args.defaults).exists():
         add_defaults(args, str(args.defaults))
 
@@ -54,20 +58,22 @@ def load_params(path) -> argparse.Namespace:
 def handle_run_mn(args) -> None:
     """Executes full Molecular Network (MN) generation workflow."""
     args = prepare_args(args, DEFAULT_MN_CONFIG)
-    from src.mn.main import main as run_mn_main
-
     mn_config = MNConfig(**dict(vars(args)))
     mn_config.display()
+
+    from src.mn.main import main as run_mn_main
+
     run_mn_main(mn_config)
 
 
 def handle_run_ms2lda(args) -> None:
     """Executes full MS2LDA workflow."""
     args = prepare_args(args, DEFAULT_MS2LDA_CONFIG)
-    from src.ms2lda.main import main as run_ms2lda_main
-
     ms2lda_config = MS2LDAConfig(**dict(vars(args)))
     ms2lda_config.display()
+
+    from src.ms2lda.main import main as run_ms2lda_main
+
     run_ms2lda_main(ms2lda_config)
 
 
@@ -76,20 +82,34 @@ def handle_add_ms2lda(args) -> None:
     Integrates motif detection and metadata injection into target CX graph.
     Mirrors rule motif_overlap + mn_motif_metadata.py from Snakefile.
     """
-    from src.add_ms2lda.main import main as add_ms2lda_main
-
+    args = prepare_args(args, DEFAULT_ADD_MS2LDA_CONFIG)
     add_ms2lda_config = AddMS2LDAConfig(**dict(vars(args)))
     add_ms2lda_config.display()
+
+    from src.add_ms2lda.main import main as add_ms2lda_main
+
     add_ms2lda_main(add_ms2lda_config)
+
+
+def handle_add_mag(args) -> None:
+    """Annotates Mass2Motifs using Motif Annotation Guidance (MAG)."""
+    args = prepare_args(args, DEFAULT_ADD_MAG_CONFIG)
+    add_mag_config = AddMAGConfig(**dict(vars(args)))
+    add_mag_config.display()
+
+    from src.ms2lda.mag import main as add_mag_main
+
+    add_mag_main(add_mag_config)
 
 
 def handle_run_snapms(args) -> None:
     """Executes full SnapMS compound identification workflow."""
     args = prepare_args(args, DEFAULT_SNAPMS_CONFIG)
-    from src.snapms.main import main as run_snapms_main
-
     snapms_config = SNAPMSConfig(**dict(vars(args)))
     snapms_config.display()
+
+    from src.snapms.main import main as run_snapms_main
+
     run_snapms_main(snapms_config)
 
 
@@ -98,10 +118,12 @@ def handle_add_snapms(args) -> None:
     Appends SnapMS annotations to a CX graph and flags SMILES.
     Mirrors annotation_metadata scripts in rule snapms from Snakefile.
     """
-    from src.add_snapms.main import main as add_snapms_main
-
+    args = prepare_args(args, DEFAULT_ADD_SNAPMS_CONFIG)
     add_snapms_config = AddSNAPMSConfig(**dict(vars(args)))
     add_snapms_config.display()
+
+    from src.add_snapms.main import main as add_snapms_main
+
     add_snapms_main(add_snapms_config)
 
 
@@ -109,7 +131,7 @@ def handle_run_all(args) -> None:
     """Executes the complete Mosaic-MS pipeline sequentially."""
 
     # 1. Run Molecular Networking
-    print("\n--- [Step 1/5] Running Molecular Networking ---")
+    print("\n--- [Step 1/6] Running Molecular Networking ---")
     handle_run_mn(
         argparse.Namespace(
             mgf=args.mgf,
@@ -119,27 +141,39 @@ def handle_run_all(args) -> None:
     )
 
     # 2. Run MS2LDA
-    print("\n--- [Step 2/5] Running MS2LDA ---")
+    print("\n--- [Step 2/6] Running MS2LDA ---")
     handle_run_ms2lda(
         argparse.Namespace(
             mgf=args.mgf,
             defaults=args.ms2lda_defaults,
             model_path=str(args.ms2lda_model_path),
+            motifs_path=str(args.ms2lda_motifs_path),
         )
     )
 
     # 3. Add MS2LDA Results to Graph
-    print("\n--- [Step 3/5] Adding MS2LDA Results to Graph ---")
+    print("\n--- [Step 3/6] Adding MS2LDA Results to Graph ---")
     handle_add_ms2lda(
         argparse.Namespace(
+            defaults=args.add_ms2lda_defaults,
             graph=args.base_graph_path,
             model=args.ms2lda_model_path,
             threshold=args.ms2lda_threshold,
         )
     )
 
-    # 4. Run SNAP-MS
-    print("\n--- [Step 4/5] Running SNAP-MS ---")
+    # 4. Add MAG (Motif Annotation Guidance)
+    print("\n--- [Step 4/6] Running Motif Annotation Guidance (MAG) ---")
+    # FIXME: currently not allowed due to missing library in standard files
+    handle_add_mag(
+        argparse.Namespace(
+            defaults=args.add_mag_defaults,
+            motifs=args.ms2lda_motifs_path,
+        )
+    )
+
+    # 5. Run SNAP-MS
+    print("\n--- [Step 5/6] Running SNAP-MS ---")
     handle_run_snapms(
         argparse.Namespace(
             graph=str(args.base_graph_path),
@@ -148,10 +182,11 @@ def handle_run_all(args) -> None:
         )
     )
 
-    # 5. Add SNAP-MS Results to Graph
-    print("\n--- [Step 5/5] Adding SNAP-MS Results to Graph ---")
+    # 6. Add SNAP-MS Results to Graph
+    print("\n--- [Step 6/6] Adding SNAP-MS Results to Graph ---")
     handle_add_snapms(
         argparse.Namespace(
+            defaults=args.add_snapms_defaults,
             graph=args.base_graph_path,
             snapms=args.snapms_result_folder,
         )
@@ -398,28 +433,79 @@ def build_parser() -> argparse.ArgumentParser:
         help="Calculate motif overlap and integrate MS2LDA metadata into an existing CX graph network.",
     )
     p_add_ms2lda.add_argument(
+        "--defaults", type=str, default=None, help="Path to YAML config file."
+    )
+    p_add_ms2lda.add_argument(
         "--model",
-        type=str,
         required=True,
+        type=str,
         help="Path to trained LDA model file (.lda).",
     )
     p_add_ms2lda.add_argument(
         "--graph",
         "-g",
-        type=str,
         required=True,
+        type=str,
         help="Path to target network CX graph file.",
     )
     p_add_ms2lda.add_argument(
         "--threshold",
         type=float,
-        default=0.01,
-        help="Motif metadata overlap threshold (default: 0.01).",
+        default=None,
+        help="Motif metadata overlap threshold.",
     )
     p_add_ms2lda.set_defaults(func=handle_add_ms2lda)
 
     # --------------------------------------
-    # 4. run-snapms
+    # 4. add-mag
+    # --------------------------------------
+    p_add_mag = subparsers.add_parser(
+        "add-mag",
+        help="Annotate extracted Mass2Motifs using Motif Annotation Guidance (MAG).",
+    )
+    p_add_mag.add_argument(
+        "--defaults", type=str, default=None, help="Path to YAML config file."
+    )
+    p_add_mag.add_argument(
+        "--motifs",
+        required=True,
+        type=str,
+        help="Path to extracted Mass2Motifs MGF file.",
+    )
+    p_add_mag.add_argument(
+        "--spec2vec-model-path",
+        type=str,
+        default=None,
+        help="Path to Spec2Vec model file.",
+    )
+    p_add_mag.add_argument(
+        "--library",
+        type=str,
+        default=None,
+        help="Path to reference library MGF file.",
+    )
+    p_add_mag.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="Similarity score threshold.",
+    )
+    p_add_mag.add_argument(
+        "--cluster-delta",
+        type=float,
+        default=None,
+        help="Cluster delta threshold.",
+    )
+    p_add_mag.add_argument(
+        "--criterium",
+        type=str,
+        default=None,
+        help="Selection criterium metric.",
+    )
+    p_add_mag.set_defaults(func=handle_add_mag)
+
+    # --------------------------------------
+    # 5. run-snapms
     # --------------------------------------
     p_run_snapms = subparsers.add_parser(
         "run-snapms",
@@ -486,30 +572,33 @@ def build_parser() -> argparse.ArgumentParser:
     p_run_snapms.set_defaults(func=handle_run_snapms)
 
     # --------------------------------------
-    # 5. add-snapms
+    # 6. add-snapms
     # --------------------------------------
     p_add_snapms = subparsers.add_parser(
         "add-snapms",
         help="Relay annotation metadata and flag SMILES on target CX graph.",
     )
     p_add_snapms.add_argument(
+        "--defaults", type=str, default=None, help="Path to YAML config file."
+    )
+    p_add_snapms.add_argument(
         "--graph",
         "-g",
-        type=str,
         required=True,
+        type=str,
         help="Path to target network CX graph file.",
     )
     p_add_snapms.add_argument(
         "--snapms",
         "-a",
-        type=str,
         required=True,
+        type=str,
         help="Path to SNAP-MS annotation results directory containing output files.",
     )
     p_add_snapms.set_defaults(func=handle_add_snapms)
 
     # --------------------------------------
-    # 6. run-all
+    # 7. run-all
     # --------------------------------------
     p_run_all = subparsers.add_parser(
         "run-all", help="Execute the full end-to-end Mosaic-MS pipeline sequentially."
@@ -530,6 +619,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output path for trained MS2LDA model file (default: results/model.lda).",
     )
     p_run_all.add_argument(
+        "--ms2lda-motifs-path",
+        type=str,
+        default="results/motifs.mgf",
+        help="Output path for extracted MS2LDA Mass2Motifs (default: results/motifs.mgf).",
+    )
+    p_run_all.add_argument(
         "--snapms-result-folder",
         type=str,
         default="results/snapms",
@@ -548,10 +643,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to YAML config file for MS2LDA step.",
     )
     p_run_all.add_argument(
+        "--add-ms2lda-defaults",
+        type=str,
+        default=None,
+        help="Path to YAML config file for Add MS2LDA step.",
+    )
+    p_run_all.add_argument(
+        "--add-mag-defaults",
+        type=str,
+        default=None,
+        help="Path to YAML config file for Add MAG step.",
+    )
+    p_run_all.add_argument(
         "--snapms-defaults",
         type=str,
         default=None,
         help="Path to YAML config file for SNAP-MS step.",
+    )
+    p_run_all.add_argument(
+        "--add-snapms-defaults",
+        type=str,
+        default=None,
+        help="Path to YAML config file for Add SNAP-MS step.",
     )
     p_run_all.add_argument(
         "--ms2lda-threshold",

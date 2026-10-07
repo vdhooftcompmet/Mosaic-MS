@@ -93,6 +93,26 @@ class AddMS2LDAConfig:
 
 
 @dataclass
+class AddMAGConfig:
+    motifs: str
+    spec2vec_model_path: str
+    library: str
+
+    threshold: float
+    cluster_delta: float
+    criterium: str
+
+    def __post_init__(self):
+        self.motifs = _resolve_path(self.motifs)
+        self.spec2vec_model_path = _resolve_path(self.spec2vec_model_path)
+        self.library = _resolve_path(self.library)
+
+    def display(self) -> None:
+        """Display Add MAG configuration parameters."""
+        _print_formatted_config("Add Motif Annotation Guidance (MAG) Configured Options", self)
+
+
+@dataclass
 class SNAPMSConfig:
     graph: str
     reference_db: str

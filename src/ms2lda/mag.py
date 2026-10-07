@@ -1,65 +1,97 @@
+import logging
 from collections import Counter, defaultdict, namedtuple
 from pathlib import Path
 
 import gensim
 import numpy as np
 from matchms import Spectrum
+from matchms.exporting import save_as_mgf
+from matchms.filtering import normalize_intensities
 from matchms.importing import load_from_mgf
 from rdkit import Chem
 from sklearn.cluster import AgglomerativeClustering
 from spec2vec import Spec2Vec
 from spec2vec.vector_operations import cosine_similarity_matrix
 
+from src.utils.configs import AddMAGConfig
+from src.utils.progress_bar import track
+
+logging.getLogger("matchms").setLevel(logging.ERROR)
+
 LibraryMatch = namedtuple("LibraryMatch", ["spectrum", "score"])
 Doc = namedtuple("Doc", ["words", "weights"])
 
 
-def main(config):
-    result = []
+def main(config: AddMAGConfig) -> None:
     motifs = list(load_from_mgf(str(config.motifs)))
     w2v = gensim.models.Word2Vec.load(str(config.spec2vec_model_path))
     model = Spec2Vec(
         model=w2v,
         intensity_weighting_power=0.5,
-        allowed_missing_percentage=20.0,
+        allowed_missing_percentage=100.0,
         progress_bar=False,
     )
     library_path = str(Path(config.library))
 
     all_matches = find_library_matches(motifs, model, library_path, config.threshold)
+
+    print(f"Found matches for {sum(bool(x) for x in all_matches)}/{len(all_matches)} motifs")
+
     for motif, matches in zip(motifs, all_matches):
         cluster = select_matches(
             matches, motif, model, config.cluster_delta, config.criterium
         )
-        spectra = [m.spectrum for m in cluster]
-        smiles = [s.get("smiles") or s.get("SMILES") for s in spectra]
-        mols = [Chem.MolFromSmiles(s) for s in smiles]
-        mols = [m for m in mols if m is not None]
+        mols = []
+        for match in cluster:
+            spectrum = match.spectrum
+            smiles = spectrum.get("smiles") or spectrum.get("SMILES")
+            mol = Chem.MolFromSmiles(smiles)
+            if mol is not None:
+                mols.append(mol)
+
         counter = greedy_substructure_finder(mols)
         most_common_substructure = counter.most_common(1)
 
         if not most_common_substructure:
-            result.append(None)
+            motif.set("mag", "")
             continue
 
         mcs, _count = most_common_substructure[0]
-        result.append(mcs)
-    return result
+        motif.set("mag", mcs)
+
+    save_as_mgf(motifs, str(config.motifs), file_mode="w")
 
 
 def find_library_matches(
     motifs: list[Spectrum],
-    similarity_metric,
+    model: Spec2Vec,
     library_path: str | Path,
     threshold: float,
     batch_size: int = 1024,
 ) -> list[list[LibraryMatch]]:
 
     result = defaultdict(list)
+    total = count_mgf_spectra(str(library_path))
+    total = total // batch_size + (1 if total % batch_size != 0 else 0)
     generator = load_from_mgf(str(library_path))
 
-    for batch in make_batches(generator, batch_size):
-        similarity = similarity_metric.matrix(motifs, batch)
+    motif_docs = [to_doc(m, model) for m in motifs]
+    motif_vectors = [convert_to_vector(model, d) for d in motif_docs]
+    motif_vectors = np.array(motif_vectors)
+
+    for batch in track(
+        make_batches(generator, batch_size),
+        total=total,
+        description="finding library matches...",
+    ):
+        batch = [normalize_intensities(s) for s in batch]
+        batch = [s for s in batch if s is not None]
+
+        batch_docs = [to_doc(m, model) for m in batch]
+        batch_vectors = [convert_to_vector(model, d) for d in batch_docs]
+        batch_vectors = np.array(batch_vectors)
+        similarity = cosine_similarity_matrix(motif_vectors, batch_vectors)
+
         hits = np.argwhere(similarity > threshold)
         for a, b in hits:
             hit: Spectrum = batch[b].clone()
@@ -69,6 +101,16 @@ def find_library_matches(
 
     result = [result[i] for i, _ in enumerate(motifs)]
     return result
+
+
+def count_mgf_spectra(input_path: Path | str) -> int:
+    input_path = Path(input_path)
+    count = 0
+    with open(input_path, "r", encoding="utf-8", errors="ignore") as f:
+        for line in f:
+            if line.strip().upper().startswith("BEGIN IONS"):
+                count += 1
+    return count
 
 
 def make_batches(generator, size):
