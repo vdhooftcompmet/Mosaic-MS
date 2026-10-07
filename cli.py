@@ -99,6 +99,7 @@ def handle_add_mag(args) -> None:
 
     from src.ms2lda.mag import main as add_mag_main
 
+    assert Path(add_mag_config.library).exists(), "missing library"
     add_mag_main(add_mag_config)
 
 
@@ -165,12 +166,16 @@ def handle_run_all(args) -> None:
     # 4. Add MAG (Motif Annotation Guidance)
     print("\n--- [Step 4/6] Running Motif Annotation Guidance (MAG) ---")
     # FIXME: currently not allowed due to missing library in standard files
-    handle_add_mag(
-        argparse.Namespace(
-            defaults=args.add_mag_defaults,
-            motifs=args.ms2lda_motifs_path,
+    # right now boilerplate fix implemented, fix later
+    try:
+        handle_add_mag(
+            argparse.Namespace(
+                defaults=args.add_mag_defaults,
+                motifs=args.ms2lda_motifs_path,
+            )
         )
-    )
+    except AssertionError:
+        print("!! Skipped this step due to missing library !!")
 
     # 5. Run SNAP-MS
     print("\n--- [Step 5/6] Running SNAP-MS ---")
