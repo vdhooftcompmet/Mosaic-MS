@@ -3,9 +3,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
-from matchms import Spectrum, SpectrumProcessor
-from matchms.filtering.default_pipelines import CLEAN_PEAKS, DEFAULT_FILTERS
-from matchms.importing import load_from_mgf
+from matchms import Spectrum
 from scipy.sparse import csr_matrix, load_npz, save_npz
 
 from src.mn.mn import (
@@ -17,7 +15,6 @@ from src.mn.mn import (
 )
 from src.utils.configs import MNConfig
 from src.utils.cx import write_cx
-from src.utils.folders import prepare_directory
 from src.utils.paths import MN_STYLE_FILE
 
 
