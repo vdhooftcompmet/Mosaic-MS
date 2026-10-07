@@ -7,12 +7,13 @@ import tomotopy as tp
 from matchms import Spectrum
 
 from src.ms2lda.ms2lda import spectra_to_documents
+from src.utils.configs import AddMS2LDAConfig
 from src.utils.cx import read_cx, write_cx
 from src.utils.paths import MN_STYLE_FILE
 from src.utils.progress_bar import track
 
 
-def main(params) -> None:
+def main(params: AddMS2LDAConfig) -> None:
     model_path = Path(params.model).resolve()
 
     assert model_path.exists(), f"Error: Model file does not exist at {model_path}"
@@ -37,10 +38,12 @@ def main(params) -> None:
 
     model = tp.LDAModel.load(str(model_path))
     topic_words = get_topic_words(model)
-    params.dataset_significant_digits = derive_significant_digits(topic_words)
-    params.dataset_acquisition_type = derive_dataset_acquisition_type(topic_words)
 
-    result = run_overlap_scores_calculation(spectra, model, params)
+    namespace = Namespace(**vars(params))
+    namespace.dataset_significant_digits = derive_significant_digits(topic_words)
+    namespace.dataset_acquisition_type = derive_dataset_acquisition_type(topic_words)
+
+    result = run_overlap_scores_calculation(spectra, model, namespace)
     _beta_matrix, _phi_matrix, _theta_matrix, overlap_scores = result
 
     threshold = float(params.threshold)

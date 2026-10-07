@@ -2,12 +2,13 @@ from collections import defaultdict
 
 import networkx as nx
 
-from src.utils.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
+from src.utils.configs import AddSNAPMSConfig
 from src.utils.cx import read_annotations, read_cx, write_cx
+from src.utils.paths import ANNOTATION_STYLE_FILE, MN_STYLE_FILE
 from src.utils.progress_bar import track
 
 
-def main(params) -> None:
+def main(params: AddSNAPMSConfig) -> None:
     mn = read_cx(str(params.graph))
 
     annotations, files, cluster_ids = read_annotations(params.snapms)
@@ -44,7 +45,9 @@ def add_snapms_data(mn: nx.Graph, annotations: dict) -> None:
     for node in mn:
         mn.nodes[node]["is_annotated"] = False
 
-    for cluster_id, graph in track(annotations.items(), description="modifying snapms graphs..."):
+    for cluster_id, graph in track(
+        annotations.items(), description="modifying snapms graphs..."
+    ):
         is_top_candidate = any([graph.nodes[n]["is_top_candidate"] for n in graph])
 
         for node in clusters[cluster_id]:
