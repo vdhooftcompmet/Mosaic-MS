@@ -22,9 +22,6 @@ from src.utils.paths import MN_STYLE_FILE
 
 
 def main(config: MNConfig) -> None:
-    if not Path(config.folder).exists():
-        prepare_directory(config.folder)
-
     spectra = clean_mgf(config.mgf)
     similarity, support = _similarity_cache(calculate_bootstrapping)(spectra, config)
 
