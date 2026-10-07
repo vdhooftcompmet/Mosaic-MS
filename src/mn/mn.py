@@ -6,7 +6,9 @@ import gensim
 import networkx as nx
 import numpy as np
 from joblib import parallel_backend
-from matchms import Spectrum
+from matchms import Spectrum, SpectrumProcessor
+from matchms.filtering.default_pipelines import CLEAN_PEAKS, DEFAULT_FILTERS
+from matchms.importing import load_from_mgf
 from matchms.similarity.FlashSimilarity import FlashSimilarity
 from ms2deepscore import MS2DeepScore
 from ms2deepscore.models import load_model
