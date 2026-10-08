@@ -1,41 +1,49 @@
 from rdkit import Chem
 
 
-def greedy_substructure_finder(mols: list[Chem.Mol]):
+def greedy_substructure_finder(mols: list[Chem.Mol], second_degree: bool = False):
     for mol in mols:
-        num_bonds = mol.GetNumBonds()
-        bonds_index = list(range(num_bonds))
-
-        for bond_index in bonds_index:
-            fragments = generate_substructure(mol, bond_index)
-
+        for fragments in generate_substructure(mol):
             if fragments is None:
                 continue
-
-            smiles1, smiles2 = fragments
-            yield smiles1, smiles2
+            yield fragments
 
 
 def generate_substructure(
-    mol: Chem.Mol, bond_index: int
-) -> None | tuple[Chem.Mol, Chem.Mol]:
+    mol: Chem.Mol
+):
 
-    with Chem.RWMol(mol) as rwmol:
-        selected_bond = rwmol.GetBondWithIdx(bond_index)
+    num_bonds = mol.GetNumBonds()
+    simple_bonds, complex_bonds = [], []
 
-        is_not_single_bond = selected_bond.GetBondType() != Chem.BondType.SINGLE
-        is_in_ring = selected_bond.IsInRing()
+    for i in range(num_bonds):
+        with Chem.RWMol(mol) as rwmol:
+            selected_bond = rwmol.GetBondWithIdx(i)
 
-        if is_not_single_bond or is_in_ring:
-            return None
+            is_in_ring = selected_bond.IsInRing()
 
-        u = selected_bond.GetBeginAtomIdx()
-        v = selected_bond.GetEndAtomIdx()
-        rwmol.RemoveBond(u, v)
+            if is_in_ring:
+                complex_bonds.append(i)
+            else:
+                simple_bonds.append(i)
 
-    frags = Chem.GetMolFrags(rwmol, asMols=True, sanitizeFrags=False)
-    if len(frags) != 2:
-        return None
+    for i in simple_bonds:
+        with Chem.RWMol(mol) as rwmol:
+            selected_bond = rwmol.GetBondWithIdx(i)
+            u = selected_bond.GetBeginAtomIdx()
+            v = selected_bond.GetEndAtomIdx()
+            rwmol.RemoveBond(u, v)
 
-    frag1, frag2 = frags
-    return frag1, frag2
+        yield Chem.GetMolFrags(rwmol, asMols=True, sanitizeFrags=False)
+
+    for i in complex_bonds:
+        for ii in complex_bonds:
+            if i <= ii:
+                continue
+            with Chem.RWMol(mol) as rwmol:
+                b1 = rwmol.GetBondWithIdx(i)
+                b2 = rwmol.GetBondWithIdx(ii)
+                rwmol.RemoveBond(b1.GetBeginAtomIdx(), b1.GetEndAtomIdx())
+                rwmol.RemoveBond(b2.GetBeginAtomIdx(), b2.GetEndAtomIdx())
+
+            yield Chem.GetMolFrags(rwmol, asMols=True, sanitizeFrags=False)
