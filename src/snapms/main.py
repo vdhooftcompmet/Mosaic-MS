@@ -23,6 +23,8 @@ def main(config: SNAPMSConfig) -> None:
     mn = read_cx(str(file))
 
     annotation_folder = Path(config.result_folder)
+    if annotation_folder.is_dir():
+        shutil.rmtree(annotation_folder)
     if not Path(annotation_folder).exists():
         prepare_directory(annotation_folder)
 
