@@ -1,17 +1,64 @@
-from collections import defaultdict, namedtuple
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import duckdb
 import networkx as nx
 import numpy as np
-import pandas as pd
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
 from src.utils.configs import SNAPMSConfig
+
+
+@dataclass
+class DBMatch:
+    neutral_mass: float
+    smiles: str
+    inchikey: str
+    morgan_fingerprint: str
+    mn_node_id: str
+    adduct: str
+    mass_cluster: None | int = None
+
+
+def find_db_matches(
+    mn: nx.Graph, nodes: set, config: SNAPMSConfig, atlas_con: duckdb.DuckDBPyConnection
+) -> list[DBMatch]:
+    matches = compute_adduct_matches(mn, nodes, config, atlas_con)
+
+    # nodes with the same or very similar masses lead to multiple copies of compounds, here we merge them into one
+    matches = merge_duplicates(matches)
+
+    matches = assign_mass_cluster(matches)
+    return matches
+
+
+def build_molecular_families(
+    matches: list[DBMatch], config: SNAPMSConfig
+) -> nx.Graph | None:
+    edges = get_edges(matches, cutoff=config.cutoff)
+
+    # makes sure nodes aren't connected to themselves
+    edges = remove_self_similar_vals(edges)
+
+    # snapms logic dictates compounds from the same origin node cannot connect to each other
+    edges = remove_same_mass_edges(edges, matches)
+
+    G = nx.Graph()
+    G.add_nodes_from((i, asdict(match)) for i, match in enumerate(matches))
+    G.add_edges_from(edges)
+
+    remove_small_subgraphs(G, config)  # small families are likely irrelevant
+
+    if len(G) == 0:  # empty graphs are not saved for ease of user investigation
+        return None
+
+    add_cluster_numbering(G)
+    add_top_candidate_annotation(G)
+
+    return G
 
 
 # ATLAS
@@ -132,11 +179,11 @@ def get_adducts(mn: nx.Graph, node: str | int, config: SNAPMSConfig) -> list[str
 # DATABASE MATCHING
 def compute_adduct_matches(
     mn: nx.Graph,
-    nodes: dict[Any, Any] | Sequence[Any],
+    nodes: set,
     config: SNAPMSConfig,
     db_con: duckdb.DuckDBPyConnection,
-) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
+) -> list[DBMatch]:
+    result: list[DBMatch] = []
 
     for node in nodes:
         try:
@@ -154,19 +201,16 @@ def compute_adduct_matches(
                 print(f"WARNING: unknown adduct {adduct}, ignoring this mass...")
                 continue
 
-            motifs = mn.nodes[node].get("motifs", "")
             mass_error = round((neutral_mass * config.ppm_error) / 1e6, 4)
             db_matches = search_db(db_con, neutral_mass, mass_error)
 
             if db_matches.empty:
                 continue
 
-            db_matches["mn_node_id"] = node
-            db_matches["adduct"] = adduct
-            db_matches["motifs"] = motifs
-
             records: list[dict[str, Any]] = db_matches.to_dict("records")
-            result.extend(records)
+            for record in records:
+                match = DBMatch(mn_node_id=node, adduct=adduct, **record)
+                result.append(match)
 
     return result
 
@@ -188,34 +232,21 @@ def search_db(
     return db_matches
 
 
-def merge_duplicates(matches: list[dict]) -> list[dict]:
+def merge_duplicates(matches: list[DBMatch]) -> list[DBMatch]:
 
     duplicates = defaultdict(list)
     parent_nodes = set()
 
     for match in matches:
-        smiles = match["smiles"]
-        duplicates[smiles].append(match)
-
-        parent_node = match["mn_node_id"]
-        parent_nodes.add(parent_node)
+        duplicates[match.smiles].append(match)
+        parent_nodes.add(match.mn_node_id)
 
     result = []
     for smiles, duplicate_matches in duplicates.items():
         m = duplicate_matches[0]
 
-        smiles_parent_nodes = [d["mn_node_id"] for d in duplicate_matches]
-        m["mn_node_id"] = ";".join({str(n) for n in smiles_parent_nodes})
-
-        shared_motifs = set()
-        for d in duplicate_matches:
-            for motif in {int(x) for x in d["motifs"].split(";") if x != ""}:
-                shared_motifs.add(motif)
-        m["motifs"] = ";".join({str(n) for n in shared_motifs})
-
-        for parent_node in parent_nodes:
-            represents_node = int(parent_node in smiles_parent_nodes)
-            m[f"parent_node_{parent_node}"] = represents_node
+        smiles_parent_nodes = [d.mn_node_id for d in duplicate_matches]
+        m.mn_node_id = ";".join({str(n) for n in smiles_parent_nodes})
 
         result.append(m)
 
@@ -256,11 +287,11 @@ def get_unique_id() -> int:
     return ID_COUNTER
 
 
-def get_edges(matches: list[dict], cutoff: float = 0.66) -> list[tuple[int, int]]:
+def get_edges(matches: list[DBMatch], cutoff: float = 0.66) -> list[tuple[int, int]]:
     fingerprints = []
     for match in matches:
         fp = ExplicitBitVect(2048)
-        fp.FromBase64(match["morgan_fingerprint"])
+        fp.FromBase64(match.morgan_fingerprint)
         fingerprints.append(fp)
 
     dice_matrix = np.zeros(shape=(len(matches), len(matches)))
@@ -273,7 +304,7 @@ def get_edges(matches: list[dict], cutoff: float = 0.66) -> list[tuple[int, int]
 
     result = []
     for u, v in zip(rows, cols):
-        if matches[u]["neutral_mass"] == matches[v]["neutral_mass"]:
+        if matches[u].neutral_mass == matches[v].neutral_mass:
             continue
 
         result.append((u, v))
@@ -285,10 +316,10 @@ def remove_self_similar_vals(edges: list[tuple]) -> list[tuple]:
     return [(u, v) for u, v in edges if u != v]
 
 
-def remove_edges_with_same_value_for(
-    edges: list[tuple], metadata: list[dict], key: str
-) -> list[tuple]:
-    return [(u, v) for u, v in edges if metadata[u][key] != metadata[v][key]]
+def remove_same_mass_edges(edges: list[tuple], matches: list[DBMatch]) -> list[tuple]:
+    return [
+        (u, v) for u, v in edges if matches[u].mass_cluster != matches[v].mass_cluster
+    ]
 
 
 def remove_small_subgraphs(graph: nx.Graph, config: SNAPMSConfig) -> None:
@@ -313,6 +344,14 @@ def add_top_candidate_annotation(graph: nx.Graph) -> None:
 
 
 def _nr_of_unique_compounds(graph: nx.Graph, nodes: set) -> int:
+    all_mass_clusters = set()
+    for node in nodes:
+        mass_cluster = graph.nodes[node]["mass_cluster"]
+        all_mass_clusters.add(mass_cluster)
+    return len(all_mass_clusters)
+
+
+def assign_mass_cluster(matches: list[DBMatch]) -> list[DBMatch]:
     # This covers an edge case where we may have overlapping ranges of masses.
     # MolA may be queried by node1 & node2, MolB might be queried by node2 and node3 (molB might be just outside the mass range of node1 ).
     # This code merges mass1, mass2 & node3 into ONE group,
@@ -320,27 +359,34 @@ def _nr_of_unique_compounds(graph: nx.Graph, nodes: set) -> int:
     # This prevents edge cases where very similar masses are counted twice due to slightly different mass ranges,
     # which would inflate the mass diversity count where no meaningful diversity exists.
 
-    mass_clusters = []
-    for node in nodes:
-        node_ids = graph.nodes[node]["mn_node_id"]
-        new_mass_cluster = {int(x) for x in node_ids.split(";")}
+    # Step 1: Pre-parse node sets for each match
+    match_nodes = [{int(x) for x in match.mn_node_id.split(";")} for match in matches]
 
-        for mass_cluster in mass_clusters:
-            if new_mass_cluster & mass_cluster:
-                mass_cluster.add(new_mass_cluster)
-                break
+    # Step 2: Merge overlapping sets (Connected Components)
+    clusters: list[set[int]] = []
+    for nodes in match_nodes:
+        # Find all clusters that overlap with the current nodes
+        overlapping = [c for c in clusters if c & nodes]
 
-    deduplicated = []
-    while mass_clusters:
-        cat = mass_clusters.pop()
-        for existing_cat in deduplicated:
-            if existing_cat & cat:
-                existing_cat.add(cat)
+        if not overlapping:
+            clusters.append(set(nodes))
+        else:
+            # Merge current nodes and all overlapping clusters into a single cluster
+            merged = nodes.union(*overlapping)
+            for c in overlapping:
+                clusters.remove(c)
+            clusters.append(merged)
+
+    # Step 3: Assign cluster IDs using enumerate()
+    for match, query_nodes in zip(matches, match_nodes):
+        for i, group in enumerate(clusters):
+            if query_nodes & group:
+                match.mass_cluster = i
                 break
         else:
-            deduplicated.append(cat)
+            assert False, "Match node was not found in any cluster"
 
-    return len(deduplicated)
+    return matches
 
 
 def add_cluster_numbering(graph: nx.Graph) -> None:
@@ -354,6 +400,8 @@ def add_cluster_numbering(graph: nx.Graph) -> None:
 
 
 def group_nodes(graph: nx.Graph) -> defaultdict:
+    # TODO: add check that mn_cluster_id corresponds with the acutual cluster sizes
+    
     groups: dict[int, list[int]] = defaultdict(list)
     for node in graph:
         mn_cluster_id = graph.nodes[node]["mn_cluster_id"]
