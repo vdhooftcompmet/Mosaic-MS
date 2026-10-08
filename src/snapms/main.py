@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import shutil
 import networkx as nx
 
 from src.snapms.snapms import (
