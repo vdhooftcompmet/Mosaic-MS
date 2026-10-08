@@ -1,5 +1,7 @@
 import argparse
 from pathlib import Path
+import logging
+from matchms import Spectrum
 
 import networkx as nx
 import numpy as np
@@ -12,6 +14,8 @@ from src.mn.mn import (
 from src.utils.cx import write_cx
 from src.utils.motifs import run_overlap_scores_calculation
 from src.utils.paths import MN_STYLE_FILE
+
+logging.getLogger("matchms").setLevel(logging.ERROR)
 
 
 def main() -> None:
@@ -67,9 +71,20 @@ def construct_motif_graph(params: argparse.Namespace) -> nx.Graph:
 
         spectrum_indices = np.where(scores > threshold)[0]
 
+        motif = topic_to_motif(model, motif_index)
+        motif_metadata = motif.to_dict()
+        motif_metadata = {f"motif_{k}": v for k, v in motif_metadata.items()}
+        
         for spectrum_index in spectrum_indices:
             spectrum = spectra[spectrum_index]
             metadata = {k: str(v) for k, v in spectrum.to_dict().items()}
+
+            # !! add cluster numbering based on motif index, not based on size
+            metadata |= {"mn_cluster_id": motif_index}
+
+            # !! add motif peaks for later use
+            metadata |= motif_metadata
+            
             G.add_node(f"m{motif_index}s{spectrum_index}", **metadata)
 
         for u, spectrum_index_u in enumerate(spectrum_indices):
@@ -81,8 +96,34 @@ def construct_motif_graph(params: argparse.Namespace) -> nx.Graph:
                 id_v = f"m{motif_index}s{spectrum_index_v}"
                 G.add_edge(id_u, id_v)
 
-    add_cluster_numbering(G)
     return G
+
+
+def topic_to_motif(model: tp.LDAModel, topic_index: int) -> Spectrum:
+    mz, intensities = [], []
+    
+    topic_words = model.get_topic_words(0, 50)
+    for word, probability in topic_words:
+
+        mz_str = word[5:]
+        mz.append(float(mz_str))
+        
+        if word.startswith("frag@"):
+            intensities.append(probability)
+        elif word.startswith("loss@"):
+            intensities.append(probability * -1)
+        else:
+            raise ValueError()
+
+    mz = np.array(mz)
+    intensities = np.array(intensities)
+
+    indices = np.argsort(mz)
+    mz = mz[indices]
+    intensities = intensities[indices]
+    motif = Spectrum(np.array(mz), np.array(intensities), {"motif_id": topic_index})
+
+    return motif
 
 
 if __name__ == "__main__":
