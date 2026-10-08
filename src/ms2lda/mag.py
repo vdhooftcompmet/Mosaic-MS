@@ -15,6 +15,7 @@ from spec2vec.vector_operations import cosine_similarity_matrix
 
 from src.utils.configs import AddMAGConfig
 from src.utils.progress_bar import track
+from src.utils.substructure import greedy_substructure_finder
 
 logging.getLogger("matchms").setLevel(logging.ERROR)
 
@@ -35,7 +36,9 @@ def main(config: AddMAGConfig) -> None:
 
     all_matches = find_library_matches(motifs, model, library_path, config.threshold)
 
-    print(f"Found matches for {sum(bool(x) for x in all_matches)}/{len(all_matches)} motifs")
+    print(
+        f"Found matches for {sum(bool(x) for x in all_matches)}/{len(all_matches)} motifs"
+    )
 
     for motif, matches in zip(motifs, all_matches):
         cluster = select_matches(
@@ -49,8 +52,13 @@ def main(config: AddMAGConfig) -> None:
             if mol is not None:
                 mols.append(mol)
 
-        counter = greedy_substructure_finder(mols)
-        most_common_substructure = counter.most_common(1)
+        substructures = Counter()
+        for frag1, frag2 in greedy_substructure_finder(mols):
+            for frag in [frag1, frag2]:
+                smiles = Chem.MolToSmiles(frag)
+                substructures[smiles] += 1
+
+        most_common_substructure = substructures.most_common(1)
 
         if not most_common_substructure:
             motif.set("mag", "")
@@ -243,46 +251,3 @@ def agglomerative_clustering(masked_spectra_similarity: np.ndarray, delta=0.6):
     )
     labels = clustering.fit_predict(cosine_distance_matrix)
     return labels
-
-
-def greedy_substructure_finder(mols):
-    substructures = Counter()
-    for mol in mols:
-        num_bonds = mol.GetNumBonds()
-        bonds_index = list(range(num_bonds))
-
-        for bond_index in bonds_index:
-            fragments = generate_substructure(mol, bond_index)
-
-            if fragments is None:
-                continue
-
-            smiles1, smiles2 = fragments
-            substructures[smiles1] += 1
-            substructures[smiles2] += 1
-
-    return substructures
-
-
-def generate_substructure(mol, bond_index: int) -> None | tuple[str, str]:
-    with Chem.RWMol(mol) as rwmol:
-        selected_bond = rwmol.GetBondWithIdx(bond_index)
-
-        is_not_single_bond = selected_bond.GetBondType() != Chem.BondType.SINGLE
-        is_in_ring = selected_bond.IsInRing()
-
-        if is_not_single_bond or is_in_ring:
-            return None
-
-        u = selected_bond.GetBeginAtomIdx()
-        v = selected_bond.GetEndAtomIdx()
-        rwmol.RemoveBond(u, v)
-
-    frags = Chem.GetMolFrags(rwmol, asMols=True, sanitizeFrags=False)
-    if len(frags) != 2:
-        return None
-
-    smiles1 = Chem.MolToSmiles(frags[0])
-    smiles2 = Chem.MolToSmiles(frags[1])
-
-    return smiles1, smiles2
