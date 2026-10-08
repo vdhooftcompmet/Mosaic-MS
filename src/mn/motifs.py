@@ -73,7 +73,7 @@ def construct_motif_graph(params: argparse.Namespace) -> nx.Graph:
 
         motif = topic_to_motif(model, motif_index)
         motif_metadata = motif.to_dict()
-        motif_metadata = {f"motif_{k}": v for k, v in motif_metadata.items()}
+        motif_metadata = {f"motif_{k}": str(v) for k, v in motif_metadata.items()}
         
         for spectrum_index in spectrum_indices:
             spectrum = spectra[spectrum_index]
