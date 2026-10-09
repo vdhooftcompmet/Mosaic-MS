@@ -1,11 +1,11 @@
 import argparse
-from pathlib import Path
 import logging
-from matchms import Spectrum
+from pathlib import Path
 
 import networkx as nx
 import numpy as np
 import tomotopy as tp
+from matchms import Spectrum
 
 from src.mn.mn import (
     add_cluster_numbering,
@@ -74,7 +74,7 @@ def construct_motif_graph(params: argparse.Namespace) -> nx.Graph:
         motif = topic_to_motif(model, motif_index)
         motif_metadata = motif.to_dict()
         motif_metadata = {f"motif_{k}": str(v) for k, v in motif_metadata.items()}
-        
+
         for spectrum_index in spectrum_indices:
             spectrum = spectra[spectrum_index]
             metadata = {k: str(v) for k, v in spectrum.to_dict().items()}
@@ -84,7 +84,7 @@ def construct_motif_graph(params: argparse.Namespace) -> nx.Graph:
 
             # !! add motif peaks for later use
             metadata |= motif_metadata
-            
+
             G.add_node(f"m{motif_index}s{spectrum_index}", **metadata)
 
         for u, spectrum_index_u in enumerate(spectrum_indices):
@@ -101,13 +101,12 @@ def construct_motif_graph(params: argparse.Namespace) -> nx.Graph:
 
 def topic_to_motif(model: tp.LDAModel, topic_index: int) -> Spectrum:
     mz, intensities = [], []
-    
-    topic_words = model.get_topic_words(0, 50)
-    for word, probability in topic_words:
 
+    topic_words = model.get_topic_words(topic_index, 50)
+    for word, probability in topic_words:
         mz_str = word[5:]
         mz.append(float(mz_str))
-        
+
         if word.startswith("frag@"):
             intensities.append(probability)
         elif word.startswith("loss@"):
