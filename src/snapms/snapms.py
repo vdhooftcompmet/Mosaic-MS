@@ -21,6 +21,8 @@ class DBMatch:
     mn_node_id: str
     adduct: str
     mass_cluster: None | int = None
+    variation: None | str = None
+    mz: None | float = None
 
 
 def find_db_matches(
@@ -39,12 +41,6 @@ def build_molecular_families(
     matches: list[DBMatch], config: SNAPMSConfig
 ) -> nx.Graph | None:
     edges = get_edges(matches, cutoff=config.cutoff)
-
-    # makes sure nodes aren't connected to themselves
-    edges = remove_self_similar_vals(edges)
-
-    # snapms logic dictates compounds from the same origin node cannot connect to each other
-    edges = remove_same_mass_edges(edges, matches)
 
     G = nx.Graph()
     G.add_nodes_from((i, asdict(match)) for i, match in enumerate(matches))
@@ -304,22 +300,12 @@ def get_edges(matches: list[DBMatch], cutoff: float = 0.66) -> list[tuple[int, i
 
     result = []
     for u, v in zip(rows, cols):
-        if matches[u].neutral_mass == matches[v].neutral_mass:
+        if matches[u].mass_cluster == matches[v].mass_cluster:
             continue
 
         result.append((u, v))
 
     return result
-
-
-def remove_self_similar_vals(edges: list[tuple]) -> list[tuple]:
-    return [(u, v) for u, v in edges if u != v]
-
-
-def remove_same_mass_edges(edges: list[tuple], matches: list[DBMatch]) -> list[tuple]:
-    return [
-        (u, v) for u, v in edges if matches[u].mass_cluster != matches[v].mass_cluster
-    ]
 
 
 def remove_small_subgraphs(graph: nx.Graph, config: SNAPMSConfig) -> None:
@@ -352,39 +338,9 @@ def _nr_of_unique_compounds(graph: nx.Graph, nodes: set) -> int:
 
 
 def assign_mass_cluster(matches: list[DBMatch]) -> list[DBMatch]:
-    # This covers an edge case where we may have overlapping ranges of masses.
-    # MolA may be queried by node1 & node2, MolB might be queried by node2 and node3 (molB might be just outside the mass range of node1 ).
-    # This code merges mass1, mass2 & node3 into ONE group,
-    # MolA and MolB are thus counted as the same mass.
-    # This prevents edge cases where very similar masses are counted twice due to slightly different mass ranges,
-    # which would inflate the mass diversity count where no meaningful diversity exists.
-
-    # Step 1: Pre-parse node sets for each match
-    match_nodes = [{int(x) for x in match.mn_node_id.split(";")} for match in matches]
-
-    # Step 2: Merge overlapping sets (Connected Components)
-    clusters: list[set[int]] = []
-    for nodes in match_nodes:
-        # Find all clusters that overlap with the current nodes
-        overlapping = [c for c in clusters if c & nodes]
-
-        if not overlapping:
-            clusters.append(set(nodes))
-        else:
-            # Merge current nodes and all overlapping clusters into a single cluster
-            merged = nodes.union(*overlapping)
-            for c in overlapping:
-                clusters.remove(c)
-            clusters.append(merged)
-
-    # Step 3: Assign cluster IDs using enumerate()
-    for match, query_nodes in zip(matches, match_nodes):
-        for i, group in enumerate(clusters):
-            if query_nodes & group:
-                match.mass_cluster = i
-                break
-        else:
-            assert False, "Match node was not found in any cluster"
+    # prevents parent masses differing by a few decimal points be counted as different
+    for match in matches:
+        match.mass_cluster = int(match.neutral_mass) # simplification works well enough
 
     return matches
 
@@ -401,7 +357,7 @@ def add_cluster_numbering(graph: nx.Graph) -> None:
 
 def group_nodes(graph: nx.Graph) -> defaultdict:
     # TODO: add check that mn_cluster_id corresponds with the acutual cluster sizes
-    
+
     groups: dict[int, list[int]] = defaultdict(list)
     for node in graph:
         mn_cluster_id = graph.nodes[node]["mn_cluster_id"]
