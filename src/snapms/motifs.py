@@ -5,6 +5,7 @@ import shutil
 from collections.abc import Generator
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from rdkit.Chem import rdMolDescriptors
 
 import duckdb
 import networkx as nx
@@ -109,8 +110,9 @@ def main():
     config = SNAPMSConfig(**dict(vars(config)))
 
     config.min_annotation_size = 2
-    config.adduct_list = []
-        
+    config.adduct_list = ["[M+Na]+", "[2M+Na]+", "[M+K]+", "[2M+K]+", "[M+H]+"]
+    config.detect_adduct = False
+
     config.display()
     fragment_snapms(config)
 
@@ -136,7 +138,13 @@ def fragment_snapms(config: SNAPMSConfig) -> None:
         if len(nodes) > config.max_cluster_size:
             continue
 
-        matches = find_fragment_matches(mn, nodes, config, atlas_con)
+        # for n in nodes:
+        #    if str(mn.nodes[n]["feature_id"]) == str(2045):
+        #        break
+        # else:
+        #    continue
+
+        matches = find_fragment_matches(mn, nodes, config, atlas_con, break_rings=False)
         G = build_molecular_families(matches, config)
         if G is None:
             continue
@@ -149,7 +157,11 @@ def fragment_snapms(config: SNAPMSConfig) -> None:
 
 
 def find_fragment_matches(
-    mn: nx.Graph, nodes: set, config: SNAPMSConfig, atlas_con: duckdb.DuckDBPyConnection
+    mn: nx.Graph,
+    nodes: set,
+    config: SNAPMSConfig,
+    atlas_con: duckdb.DuckDBPyConnection,
+    break_rings: bool,
 ) -> list[DBMatch]:
 
     fragments = []
@@ -159,9 +171,16 @@ def find_fragment_matches(
         motif = derive_motif(mn, node)
 
         for match in matches:
-            for smiles in derive_valid_fragments(motif, [match]):
+            for mol, smiles, mz, variation, mass_error_da in derive_valid_fragments(motif, [match], break_rings):
+                morgan_fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
+
                 fragment = DBMatch(**asdict(match))
+                fragment.morgan_fingerprint = morgan_fp.ToBase64()
+                fragment.inchikey = ""
                 fragment.smiles = smiles
+                fragment.mz = mz
+                fragment.variation = variation
+                fragment.mass_error_da = mass_error_da
                 fragments.append(fragment)
 
     fragments = assign_mass_cluster(fragments)
@@ -169,9 +188,18 @@ def find_fragment_matches(
     return fragments
 
 
-def derive_valid_fragments(motif: Spectrum, matches: list[DBMatch]) -> Generator:
-    intensities = normalize_intensities(motif.peaks.intensities)
-    valid_masses = np.abs(motif.peaks.mz[intensities > 0.3])
+def derive_valid_fragments(
+    motif: Spectrum, matches: list[DBMatch], break_rings: bool
+) -> Generator:
+    intensities = motif.peaks.intensities
+    intensities[intensities < 0] = 0
+    n = np.max(intensities)
+    if n != 0:
+        intensities /= n
+
+    # max_index = np.argmax(np.abs(intensities))
+    valid_mz = motif.peaks.mz[intensities > 0.05]
+    valid_masses = np.abs(valid_mz)
 
     for db_match in matches:
         adduct = ADDUCT_RULES[db_match.adduct]
@@ -181,25 +209,39 @@ def derive_valid_fragments(motif: Spectrum, matches: list[DBMatch]) -> Generator
         if mol is None:
             continue
 
-        for substructures in greedy_substructure_finder([mol]):
-            for substructure in substructures:
-                monoisotopic_mass = rdMolDescriptors.CalcExactMolWt(substructure)
+        for substructure in greedy_substructure_finder([mol]):
+            fragment_mass = rdMolDescriptors.CalcExactMolWt(substructure)
 
-                variations = [
-                    monoisotopic_mass,
-                    monoisotopic_mass + ion_mass,
-                    monoisotopic_mass - H,
-                    monoisotopic_mass - 2 * H,
-                ]
-
-                def valid(mass: float):
-                    return np.any(np.isclose(valid_masses, mass, atol=1e-1))
-
-                if not any(valid(v) for v in variations):
-                    continue
-
+            for mz, variation, mass_error in filter_valid_mass(fragment_mass, ion_mass, valid_masses):
                 smiles = Chem.MolToSmiles(substructure)
-                yield smiles
+                yield substructure, smiles, mz, variation, mass_error
+
+
+def filter_valid_mass(fragment_mass, ion_mass, valid_masses):
+    DALTON_ERROR = 0.1
+    variations = [
+        # neutral fragment
+        ("[M* + A]", fragment_mass + ion_mass),
+        ("[M*]", fragment_mass),
+
+        # fragment 'steals' H from other fragment
+        ("[M+H + A]", fragment_mass + ion_mass + H),
+        ("[M+H]", fragment_mass + H),
+
+        # fragment 'donates' H to other fragment
+        ("[M-H + A]", fragment_mass + ion_mass - H),
+        ("[M-H]", fragment_mass - H),
+    ]
+
+    for variation, mass in variations:
+        delta = valid_masses - mass
+        i = np.argmin(np.abs(delta))
+
+        mz = valid_masses[i]
+        mass_error = delta[i]
+        if np.abs(mass_error) <= DALTON_ERROR:
+            yield mz, variation, mass_error
+            return
 
 
 def derive_motif(G: nx.Graph, node: str | int) -> Spectrum:

@@ -43,6 +43,8 @@ def write_cx(graph: nx.Graph, file_path: str, style_example: str | None = None) 
 
         # Add node attributes with type detection
         for k, v in graph.nodes[node].items():
+            if v is None:
+                v = str(None)
             nice_cx.set_node_attribute(node_id, k, v, type=infer_cx_type(v))
 
     # 2. Add Edges using the ID mapping

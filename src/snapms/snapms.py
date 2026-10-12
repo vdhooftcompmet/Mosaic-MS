@@ -23,6 +23,7 @@ class DBMatch:
     mass_cluster: None | int = None
     variation: None | str = None
     mz: None | float = None
+    mass_error_da: None | float = None
 
 
 def find_db_matches(
