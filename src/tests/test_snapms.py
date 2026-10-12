@@ -235,7 +235,7 @@ def test_get_edges(sample_db_df) -> None:
     ]
 
     edges = get_edges(matches, cutoff=0.1)
-    assert edges == [(0, 1)]
+    assert edges == [(0, 1, {"strength":1.0})]
 
 
 def test_get_edges_ignores_equal_mass_cluster(sample_db_df) -> None:
