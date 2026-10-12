@@ -1,14 +1,17 @@
 from unittest.mock import MagicMock
 
+import duckdb
 import networkx as nx
 import pandas as pd
 import pytest
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
 from src.snapms.snapms import (
+    DBMatch,
     _nr_of_unique_compounds,
     add_cluster_numbering,
     add_top_candidate_annotation,
+    assign_mass_cluster,
     compute_adduct_matches,
     derive_neutral_mass,
     filter_clusters,
@@ -18,8 +21,6 @@ from src.snapms.snapms import (
     group_by_property,
     import_atlas,
     merge_duplicates,
-    remove_edges_with_same_value_for,
-    remove_self_similar_vals,
     remove_small_subgraphs,
 )
 from src.utils.configs import SNAPMSConfig
@@ -38,6 +39,7 @@ def mock_config():
     config.min_cluster_size = 2
     config.max_cluster_size = 5
     config.min_annotation_size = 2
+    config.cutoff = 0.66
     return config
 
 
@@ -93,10 +95,12 @@ def test_import_atlas_success(mock_config, tmp_path) -> None:
     db_file.write_text('{"neutral_mass": 100.0, "smiles": "C"}\n')
     mock_config.reference_db = db_file
 
-    df = import_atlas(mock_config)
+    con = import_atlas(mock_config)
+    df = con.execute("SELECT * FROM df").df()
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 1
     assert df.iloc[0]["smiles"] == "C"
+    con.close()
 
 
 # --- Mass & Adduct Tests ---
@@ -115,11 +119,11 @@ def test_import_atlas_success(mock_config, tmp_path) -> None:
 )
 def test_derive_neutral_mass_valid(precursor_mz, adduct, expected_neutral_mass) -> None:
     calculated = derive_neutral_mass(precursor_mz, adduct)
-    pytest.approx(calculated, expected_neutral_mass, abs=1e-4)
+    assert calculated == pytest.approx(expected_neutral_mass, abs=1e-3)
 
 
 def test_derive_neutral_mass_invalid() -> None:
-    with pytest.raises(ValueError, match="Adduct not recognized"):
+    with pytest.raises(ValueError, match="Adduct.*not recognized"):
         derive_neutral_mass(100.0, "[UNKNOWN]+")
 
 
@@ -153,14 +157,16 @@ def test_get_adducts_fallback_warning(sample_network, mock_config, capsys) -> No
 
 
 def test_compute_adduct_matches(sample_network, sample_db_df, mock_config) -> None:
-    matches = compute_adduct_matches(
-        sample_network, ["node_1"], mock_config, sample_db_df
-    )
+    con = duckdb.connect()
+    con.execute("CREATE TABLE df AS SELECT * FROM sample_db_df")
+
+    matches = compute_adduct_matches(sample_network, {"node_1"}, mock_config, con)
 
     assert len(matches) == 1
-    assert matches[0]["mn_node_id"] == "node_1"
-    assert matches[0]["smiles"] == "CCO"
-    assert matches[0]["adduct"] == "[M+H]+"
+    assert matches[0].mn_node_id == "node_1"
+    assert matches[0].smiles == "CCO"
+    assert matches[0].adduct == "[M+H]+"
+    con.close()
 
 
 def test_compute_adduct_matches_missing_mass_or_invalid_adduct(
@@ -169,30 +175,32 @@ def test_compute_adduct_matches_missing_mass_or_invalid_adduct(
     sample_network.add_node("node_no_mass")
     sample_network.add_node("node_bad_adduct", precursor_mz=100.0, adduct="BAD")
 
+    con = duckdb.connect()
+    con.execute("CREATE TABLE df AS SELECT * FROM sample_db_df")
+
     matches = compute_adduct_matches(
-        sample_network, ["node_no_mass", "node_bad_adduct"], mock_config, sample_db_df
+        sample_network, {"node_no_mass", "node_bad_adduct"}, mock_config, con
     )
     captured = capsys.readouterr()
 
     assert len(matches) == 0
     assert "precursor mass not found" in captured.out
     assert "unknown adduct" in captured.out
+    con.close()
 
 
 def test_merge_duplicates() -> None:
+    fp = ExplicitBitVect(2048)
     matches = [
-        {"smiles": "CCO", "mn_node_id": "node_1", "motifs": "1;2"},
-        {"smiles": "CCO", "mn_node_id": "node_2", "motifs": "2;3"},
+        DBMatch(300.0, "CCO", "KEY1", fp.ToBase64(), "node_1", "[M+H]+"),
+        DBMatch(300.1, "CCO", "KEY1", fp.ToBase64(), "node_2", "[M+H]+"),
     ]
 
     merged = merge_duplicates(matches)
 
     assert len(merged) == 1
     m = merged[0]
-    assert set(m["mn_node_id"].split(";")) == {"node_1", "node_2"}
-    assert set(m["motifs"].split(";")) == {"1", "2", "3"}
-    assert m["parent_node_node_1"] == 1
-    assert m["parent_node_node_2"] == 1
+    assert set(m.mn_node_id.split(";")) == {"node_1", "node_2"}
 
 
 # --- Clustering & Edge Calculations ---
@@ -206,45 +214,39 @@ def test_group_by_property(sample_network) -> None:
 
 def test_filter_clusters(mock_config) -> None:
     clusters = {
-        "c1": {1: {}},  # Size 1 (too small)
-        "c2": {1: {}, 2: {}, 3: {}},  # Size 3 (valid)
-        "c3": {i: {} for i in range(10)},  # Size 10 (too large)
+        "c1": {1: {}},
+        "c2": {1: {}, 2: {}, 3: {}},
+        "c3": {i: {} for i in range(10)},
     }
     filtered = filter_clusters(clusters, mock_config)
     assert set(filtered.keys()) == {"c2"}
 
 
 def test_get_edges(sample_db_df) -> None:
-    matches = sample_db_df.to_dict(orient="records")
-    # Tweak neutral_masses so they differ and can form valid edges
-    matches[0]["neutral_mass"] = 300.0
-    matches[1]["neutral_mass"] = 350.0
+    fp1 = ExplicitBitVect(2048)
+    fp1.SetBitsFromList([1, 10, 100])
+
+    fp2 = ExplicitBitVect(2048)
+    fp2.SetBitsFromList([1, 10, 100])  # Identical fingerprints give similarity = 1.0
+
+    matches = [
+        DBMatch(300.0, "CCO", "K1", fp1.ToBase64(), "n1", "[M+H]+", mass_cluster=300),
+        DBMatch(350.0, "CCN", "K2", fp2.ToBase64(), "n2", "[M+H]+", mass_cluster=350),
+    ]
 
     edges = get_edges(matches, cutoff=0.1)
     assert edges == [(0, 1)]
 
 
-def test_get_edges_ignores_equal_neutral_mass(sample_db_df) -> None:
-    matches = sample_db_df.to_dict(orient="records")
-    matches[0]["neutral_mass"] = 300.0
-    matches[1]["neutral_mass"] = 300.0  # Same neutral mass
+def test_get_edges_ignores_equal_mass_cluster(sample_db_df) -> None:
+    fp = ExplicitBitVect(2048)
+    matches = [
+        DBMatch(300.0, "CCO", "K1", fp.ToBase64(), "n1", "[M+H]+", mass_cluster=300),
+        DBMatch(300.5, "CCN", "K2", fp.ToBase64(), "n2", "[M+H]+", mass_cluster=300),
+    ]
 
     edges = get_edges(matches, cutoff=0.1)
     assert len(edges) == 0
-
-
-def test_remove_self_similar_vals() -> None:
-    edges = [(0, 1), (1, 1), (2, 3)]
-    filtered = remove_self_similar_vals(edges)
-    assert filtered == [(0, 1), (2, 3)]
-
-
-def test_remove_edges_with_same_value_for() -> None:
-    edges = [(0, 1), (1, 2)]
-    metadata = {0: {"type": "A"}, 1: {"type": "A"}, 2: {"type": "B"}}
-
-    filtered = remove_edges_with_same_value_for(edges, metadata, "type")
-    assert filtered == [(1, 2)]
 
 
 # --- Graph Candidate & Clustering Annotations ---
@@ -252,8 +254,8 @@ def test_remove_edges_with_same_value_for() -> None:
 
 def test_remove_small_subgraphs(mock_config) -> None:
     G = nx.Graph()
-    G.add_edges_from([(1, 2)])  # Cluster size 2
-    G.add_node(3)  # Cluster size 1
+    G.add_edges_from([(1, 2)])
+    G.add_node(3)
 
     remove_small_subgraphs(G, mock_config)
 
@@ -262,14 +264,12 @@ def test_remove_small_subgraphs(mock_config) -> None:
 
 def test_add_top_candidate_annotation() -> None:
     G = nx.Graph()
-    # Cluster 1: 3 unique mn_node_id compounds
-    G.add_node(1, mn_node_id="A")
-    G.add_node(2, mn_node_id="B")
-    G.add_node(3, mn_node_id="C")
+    G.add_node(1, mass_cluster=1)
+    G.add_node(2, mass_cluster=2)
+    G.add_node(3, mass_cluster=3)
     G.add_edges_from([(1, 2), (2, 3)])
 
-    # Cluster 2: 1 unique mn_node_id compound
-    G.add_node(4, mn_node_id="D")
+    G.add_node(4, mass_cluster=4)
 
     add_top_candidate_annotation(G)
 
@@ -281,8 +281,8 @@ def test_add_top_candidate_annotation() -> None:
 
 def test_add_top_candidate_annotation_max_count_le_2() -> None:
     G = nx.Graph()
-    G.add_node(1, mn_node_id="A")
-    G.add_node(2, mn_node_id="B")
+    G.add_node(1, mass_cluster=1)
+    G.add_node(2, mass_cluster=2)
     G.add_edge(1, 2)
 
     add_top_candidate_annotation(G)
@@ -293,11 +293,11 @@ def test_add_top_candidate_annotation_max_count_le_2() -> None:
 
 def test_nr_of_unique_compounds() -> None:
     G = nx.Graph()
-    G.add_node(1, key="A")
-    G.add_node(2, key="A")
-    G.add_node(3, key="B")
+    G.add_node(1, mass_cluster=100)
+    G.add_node(2, mass_cluster=100)
+    G.add_node(3, mass_cluster=200)
 
-    count = _nr_of_unique_compounds(G, {1, 2, 3}, "key")
+    count = _nr_of_unique_compounds(G, {1, 2, 3})
     assert count == 2
 
 
@@ -311,5 +311,5 @@ def test_get_unique_id_and_add_cluster_numbering() -> None:
 
     add_cluster_numbering(G)
 
-    cluster_ids = {G.nodes[node]["mn_cluster_id"] for node in G.nodes()}
+    cluster_ids = {G.nodes[node]["parent_cluster"] for node in G.nodes()}
     assert len(cluster_ids) == 2

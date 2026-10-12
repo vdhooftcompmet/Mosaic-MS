@@ -17,12 +17,15 @@ import pytest
 from matchms import Spectrum
 
 from src.add_ms2lda.main import (
-    derive_dataset_acquisition_type,
-    derive_significant_digits,
-    get_topic_words,
     main,
     parse_spectrum_peaks,
     run_overlap_scores_calculation,
+)
+from src.utils.motifs import (
+    derive_dataset_acquisition_type,
+    derive_significant_digits,
+    get_topic_words,
+    spectra_to_documents
 )
 
 warnings.filterwarnings(
@@ -135,9 +138,9 @@ def test_derive_dataset_acquisition_type(words: Sequence[str], expected_type) ->
 # --- Core Calculation Tests ---
 
 
-@patch("src.add_ms2lda.main.spectra_to_documents")
+@patch("src.utils.motifs.spectra_to_documents")
 def test_run_overlap_scores_calculation(
-    mock_spectra_to_docs, mock_lda_model, mock_params
+    mock_spectra_to_docs, mock_lda_model
 ) -> None:
     spec1 = Spectrum(mz=np.array([100.1, 200.2]), intensities=np.array([10.0, 50.0]))
     spec2 = Spectrum(mz=np.array([150.3, 250.4]), intensities=np.array([20.0, 80.0]))
@@ -147,7 +150,7 @@ def test_run_overlap_scores_calculation(
     mock_spectra_to_docs.return_value = [["loss@100.12"], ["fragment@200.45"]]
 
     beta, phi, theta, overlap_scores = run_overlap_scores_calculation(
-        spectra, mock_lda_model, mock_params
+        spectra, mock_lda_model
     )
 
     assert beta.shape == (2, 2)
@@ -157,7 +160,7 @@ def test_run_overlap_scores_calculation(
     assert np.all(overlap_scores >= 0)
 
 
-@patch("src.add_ms2lda.main.spectra_to_documents")
+@patch("src.utils.motifs.spectra_to_documents")
 def test_run_overlap_scores_calculation_empty_document(
     mock_spectra_to_docs, mock_lda_model, mock_params
 ) -> None:
@@ -165,7 +168,7 @@ def test_run_overlap_scores_calculation_empty_document(
     mock_spectra_to_docs.return_value = [[]]  # Empty word list
 
     beta, phi, theta, overlap_scores = run_overlap_scores_calculation(
-        [spec1], mock_lda_model, mock_params
+        [spec1], mock_lda_model
     )
 
     assert overlap_scores.shape == (2, 1)

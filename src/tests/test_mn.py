@@ -7,7 +7,6 @@ from matchms import Spectrum
 
 from src.mn.mn import (
     EdgeData,
-    _assign_cluster_ids,
     _extract_graphdata,
     _filter_components,
     _mask_spectra_globally,
@@ -289,7 +288,6 @@ def test_build_graph(sample_spectra) -> None:
 
     assert G.number_of_nodes() == 3
     assert G.number_of_edges() == 2
-    assert "component" in G.nodes[0]
     assert G[0][1]["weight"] == 0.8
 
 
@@ -304,17 +302,3 @@ def test_run_networking(sample_spectra, mock_config) -> None:
     assert isinstance(G, nx.Graph)
     assert G.number_of_nodes() == 3
 
-
-def test_assign_and_add_cluster_numbering() -> None:
-    G = nx.Graph()
-    G.add_edges_from([(0, 1), (1, 2), (3, 4)])
-
-    _assign_cluster_ids(G)
-    add_cluster_numbering(G)
-
-    # Connected component of size 3 should be component 0, size 2 component 1
-    assert G.nodes[0]["component"] == 0
-    assert G.nodes[3]["component"] == 1
-
-    assert G.nodes[0]["mn_cluster_id"] == 0
-    assert G.nodes[3]["mn_cluster_id"] == 1
