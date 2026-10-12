@@ -19,3 +19,4 @@ snakemake/effect_of_k/*
 .ipynb_checkpoints
 
 notebooks
+config
