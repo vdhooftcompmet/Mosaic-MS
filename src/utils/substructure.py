@@ -115,6 +115,8 @@ from rdkit import Chem
 
 def greedy_substructure_finder(mols: list[Chem.Mol]):
     for mol in mols:
+        yield mol
+
         n = mol.GetNumBonds()
         if n == 0:
             continue

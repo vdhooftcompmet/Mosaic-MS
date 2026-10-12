@@ -194,3 +194,36 @@ class MNConfig:
     def display(self) -> None:
         """Display MN configuration parameters."""
         _print_formatted_config("Molecular Networking Configured Options", self)
+
+
+@dataclass
+class AnnotationConfig:
+    mgf: str
+    model: str
+    threshold: float
+
+    graph: str
+    reference_db: str
+    result_folder: str
+
+    ppm_error: int
+    cutoff: float
+    adduct_list: list
+
+    min_cluster_size: int
+    max_cluster_size: int
+    min_annotation_size: int
+
+    remove_duplicates: bool
+    detect_adduct: bool
+
+    def __post_init__(self):
+        self.mgf = _resolve_path(self.mgf)
+        self.model = _resolve_path(self.model)
+        self.graph = _resolve_path(self.graph)
+        self.reference_db = _resolve_path(self.reference_db)
+        self.result_folder = _resolve_path(self.result_folder)
+
+    def display(self) -> None:
+        """Display SNAPMS configuration parameters."""
+        _print_formatted_config("SNAPMS Configured Options", self)

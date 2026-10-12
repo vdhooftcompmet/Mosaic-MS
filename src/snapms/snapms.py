@@ -9,7 +9,7 @@ import numpy as np
 from rdkit import DataStructs
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
-from src.utils.configs import SNAPMSConfig
+from src.utils.configs import AnnotationConfig, SNAPMSConfig
 
 
 @dataclass
@@ -27,7 +27,10 @@ class DBMatch:
 
 
 def find_db_matches(
-    mn: nx.Graph, nodes: set, config: SNAPMSConfig, atlas_con: duckdb.DuckDBPyConnection
+    mn: nx.Graph,
+    nodes: set,
+    config: SNAPMSConfig | AnnotationConfig,
+    atlas_con: duckdb.DuckDBPyConnection,
 ) -> list[DBMatch]:
     matches = compute_adduct_matches(mn, nodes, config, atlas_con)
 
@@ -39,7 +42,7 @@ def find_db_matches(
 
 
 def build_molecular_families(
-    matches: list[DBMatch], config: SNAPMSConfig
+    matches: list[DBMatch], config: SNAPMSConfig | AnnotationConfig
 ) -> nx.Graph | None:
     edges = get_edges(matches, cutoff=config.cutoff)
 
@@ -59,7 +62,7 @@ def build_molecular_families(
 
 
 # ATLAS
-def import_atlas(config: SNAPMSConfig) -> duckdb.DuckDBPyConnection:
+def import_atlas(config: SNAPMSConfig | AnnotationConfig) -> duckdb.DuckDBPyConnection:
     db_path = Path(config.reference_db)
 
     if not db_path.exists():
@@ -157,7 +160,9 @@ def derive_neutral_mass(precursor_mz: float, adduct: str) -> float:
 ADDUCT_ALIASES = ["adduct", "ion"]
 
 
-def get_adducts(mn: nx.Graph, node: str | int, config: SNAPMSConfig) -> list[str]:
+def get_adducts(
+    mn: nx.Graph, node: str | int, config: SNAPMSConfig | AnnotationConfig
+) -> list[str]:
     if not config.detect_adduct:
         return config.adduct_list
 
@@ -177,7 +182,7 @@ def get_adducts(mn: nx.Graph, node: str | int, config: SNAPMSConfig) -> list[str
 def compute_adduct_matches(
     mn: nx.Graph,
     nodes: set,
-    config: SNAPMSConfig,
+    config: SNAPMSConfig | AnnotationConfig,
     db_con: duckdb.DuckDBPyConnection,
 ) -> list[DBMatch]:
     result: list[DBMatch] = []
@@ -268,7 +273,7 @@ def group_by_property(
 
 
 def filter_clusters(
-    clusters: dict, config: SNAPMSConfig
+    clusters: dict, config: SNAPMSConfig | AnnotationConfig
 ) -> dict[str | float | int, dict]:
     clusters = {k: v for k, v in clusters.items() if len(v) >= config.min_cluster_size}
     clusters = {k: v for k, v in clusters.items() if len(v) <= config.max_cluster_size}
@@ -304,12 +309,16 @@ def get_edges(matches: list[DBMatch], cutoff: float = 0.66) -> list[tuple[int, i
         if matches[u].mass_cluster == matches[v].mass_cluster:
             continue
 
-        result.append((u, v))
+        strength = dice_matrix[u, v]
+
+        result.append((u, v, {"strength": strength}))
 
     return result
 
 
-def remove_small_subgraphs(graph: nx.Graph, config: SNAPMSConfig) -> None:
+def remove_small_subgraphs(
+    graph: nx.Graph, config: SNAPMSConfig | AnnotationConfig
+) -> None:
     clusters = [x for x in nx.connected_components(graph)]
     for nodes in clusters:
         if len(nodes) < config.min_annotation_size:
@@ -341,7 +350,7 @@ def _nr_of_unique_compounds(graph: nx.Graph, nodes: set) -> int:
 def assign_mass_cluster(matches: list[DBMatch]) -> list[DBMatch]:
     # prevents parent masses differing by a few decimal points be counted as different
     for match in matches:
-        match.mass_cluster = int(match.neutral_mass) # simplification works well enough
+        match.mass_cluster = int(match.neutral_mass)  # simplification works well enough
 
     return matches
 

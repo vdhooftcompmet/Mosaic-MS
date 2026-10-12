@@ -1,21 +1,22 @@
-import argparse
 import json
 import logging
 import shutil
 from collections.abc import Generator
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from rdkit.Chem import rdMolDescriptors
 
 import duckdb
 import networkx as nx
 import numpy as np
+import tomotopy as tp
 from matchms import Spectrum
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 
+from src.mn.mn import clean_mgf
 from src.snapms.snapms import (
     ADDUCT_RULES,
+    Adduct,
     DBMatch,
     H,
     assign_mass_cluster,
@@ -25,18 +26,15 @@ from src.snapms.snapms import (
     import_atlas,
     merge_duplicates,
 )
-from src.utils.cli import prepare_args
-from src.utils.configs import SNAPMSConfig
+from src.utils.configs import AnnotationConfig
 from src.utils.cx import read_cx, write_cx
 from src.utils.folders import prepare_directory
-from src.utils.paths import ANNOTATION_STYLE_FILE
+from src.utils.motifs import run_overlap_scores_calculation
+from src.utils.paths import MOTIF_FILE
 from src.utils.progress_bar import track
 from src.utils.substructure import greedy_substructure_finder
 
 logging.getLogger("matchms").setLevel(logging.ERROR)
-
-REPO = Path(__file__).parent.parent.parent.resolve()
-DEFAULT_SNAPMS_CONFIG = REPO / "config" / "snapms.yaml"
 
 
 @dataclass
@@ -45,84 +43,93 @@ class Fragment:
     origin: set[int]
 
 
-def main():
-    parser = argparse.ArgumentParser(description="motif fragment based SNAP-MS tool.")
-    parser.add_argument(
-        "--defaults", type=str, default=None, help="Path to YAML config file."
-    )
-    parser.add_argument(
-        "--graph",
-        "-g",
-        type=str,
-        default=None,
-        help="Target molecular network CX graph.",
-    )
-    parser.add_argument(
-        "--result-folder",
-        type=str,
-        default=None,
-        help="Destination directory for output.",
-    )
-    parser.add_argument(
-        "--reference-db",
-        type=str,
-        default=None,
-        help="Reference structure database path.",
-    )
-    parser.add_argument(
-        "--ppm-error", type=float, default=None, help="Mass tolerance error in PPM."
-    )
-    parser.add_argument(
-        "--min-cluster-size",
-        type=int,
-        default=None,
-        help="Minimum network cluster size.",
-    )
-    parser.add_argument(
-        "--max-cluster-size",
-        type=int,
-        default=None,
-        help="Maximum network cluster size.",
-    )
-    parser.add_argument(
-        "--min-annotation-size",
-        type=int,
-        default=None,
-        help="Minimum annotation cluster size.",
-    )
-    parser.add_argument(
-        "--cutoff",
-        type=float,
-        default=None,
-        help="Tanimoto similarity cutoff threshold.",
-    )
-    parser.add_argument(
-        "--adduct-list", nargs="+", default=None, help="List of candidate adduct forms."
-    )
-    parser.add_argument(
-        "--detect-adduct",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help="Automatically detect adduct annotations directly from graph properties.",
-    )
-    config = parser.parse_args()
-    config = prepare_args(config, DEFAULT_SNAPMS_CONFIG)
-    config = SNAPMSConfig(**dict(vars(config)))
+def construct_motif_graph(params: AnnotationConfig) -> nx.Graph:
+    model_path = Path(params.model).resolve()
+    spectra = list(clean_mgf(str(params.mgf)))
 
-    config.min_annotation_size = 2
-    config.adduct_list = ["[M+Na]+", "[2M+Na]+", "[M+K]+", "[2M+K]+", "[M+H]+"]
-    config.detect_adduct = False
+    model = tp.LDAModel.load(str(model_path))
+    result = run_overlap_scores_calculation(spectra, model)
+    _beta_matrix, _phi_matrix, _theta_matrix, overlap_scores = result
 
-    config.display()
-    fragment_snapms(config)
+    threshold = float(params.threshold)
+
+    G = nx.Graph()
+
+    for motif_index in range(overlap_scores.shape[0]):
+        scores = overlap_scores[motif_index, :]
+
+        assert len(scores) == len(spectra)
+
+        above_threshold = np.where(scores > threshold)[0]
+        top_n = np.argsort(scores)[-10:]
+        spectrum_indices = np.intersect1d(above_threshold, top_n)
+
+        motif = topic_to_motif(model, motif_index)
+        motif_metadata = motif.to_dict()
+        motif_metadata = {f"motif_{k}": str(v) for k, v in motif_metadata.items()}
+
+        for spectrum_index in spectrum_indices:
+            spectrum = spectra[spectrum_index]
+            metadata = {k: str(v) for k, v in spectrum.to_dict().items()}
+
+            # !! add cluster numbering based on motif index, not based on size
+            metadata |= {"mn_cluster_id": motif_index}
+
+            # !! add motif peaks for later use
+            metadata |= motif_metadata
+
+            G.add_node(f"m{motif_index}s{spectrum_index}", **metadata)
+
+        for u, spectrum_index_u in enumerate(spectrum_indices):
+            for v, spectrum_index_v in enumerate(spectrum_indices):
+                if u <= v:
+                    continue
+
+                id_u = f"m{motif_index}s{spectrum_index_u}"
+                id_v = f"m{motif_index}s{spectrum_index_v}"
+                G.add_edge(id_u, id_v)
+
+    return G
 
 
-def fragment_snapms(config: SNAPMSConfig) -> None:
+def topic_to_motif(model: tp.LDAModel, topic_index: int) -> Spectrum:
+    mz, intensities = [], []
+
+    topic_words = model.get_topic_words(topic_index, 50)
+
+    for pair in topic_words:
+        assert len(pair) == 2
+
+        word, probability = pair
+        mz_str = word[5:]
+        mz.append(float(mz_str))
+
+        if word.startswith("frag@"):
+            intensities.append(probability)
+        elif word.startswith("loss@"):
+            intensities.append(probability * -1)
+        else:
+            raise ValueError()
+
+    mz = np.array(mz)
+    intensities = np.array(intensities)
+
+    indices = np.argsort(mz)
+    mz = mz[indices]
+    intensities = intensities[indices]
+    motif = Spectrum(np.array(mz), np.array(intensities), {"motif_id": topic_index})
+
+    return motif
+
+
+def fragment_snapms(config: AnnotationConfig, graph=None) -> None:
+    if graph is None:
+        file = Path(config.graph)
+        Gsuper = read_cx(str(file))
+    else:
+        Gsuper = graph
+
     atlas_con = import_atlas(config)
-
-    file = Path(config.graph)
-
-    mn = read_cx(str(file))
 
     annotation_folder = Path(config.result_folder)
     if annotation_folder.is_dir():
@@ -130,7 +137,7 @@ def fragment_snapms(config: SNAPMSConfig) -> None:
     if not Path(annotation_folder).exists():
         prepare_directory(annotation_folder)
 
-    groups = group_nodes(mn)
+    groups = group_nodes(Gsuper)
 
     for identifier, nodes in track(groups.items(), description="running snap-ms..."):
         if len(nodes) < config.min_cluster_size:
@@ -138,28 +145,24 @@ def fragment_snapms(config: SNAPMSConfig) -> None:
         if len(nodes) > config.max_cluster_size:
             continue
 
-        # for n in nodes:
-        #    if str(mn.nodes[n]["feature_id"]) == str(2045):
-        #        break
-        # else:
-        #    continue
-
-        matches = find_fragment_matches(mn, nodes, config, atlas_con, break_rings=False)
-        G = build_molecular_families(matches, config)
-        if G is None:
+        matches = find_fragment_matches(
+            Gsuper, nodes, config, atlas_con, break_rings=False
+        )
+        Gsub = build_molecular_families(matches, config)
+        if Gsub is None:
             continue
 
-        values = {node: identifier for node in G.nodes}
-        nx.set_node_attributes(G=G, values=values, name="mn_cluster_id")
+        values = {node: identifier for node in Gsub.nodes}
+        nx.set_node_attributes(G=Gsub, values=values, name="mn_cluster_id")
 
         save_path = str(annotation_folder / f"graph-{identifier}.cx")
-        write_cx(G, save_path, ANNOTATION_STYLE_FILE)
+        write_cx(Gsub, save_path, MOTIF_FILE)
 
 
 def find_fragment_matches(
     mn: nx.Graph,
     nodes: set,
-    config: SNAPMSConfig,
+    config: AnnotationConfig,
     atlas_con: duckdb.DuckDBPyConnection,
     break_rings: bool,
 ) -> list[DBMatch]:
@@ -171,8 +174,12 @@ def find_fragment_matches(
         motif = derive_motif(mn, node)
 
         for match in matches:
-            for mol, smiles, mz, variation, mass_error_da in derive_valid_fragments(motif, [match], break_rings):
-                morgan_fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
+            for mol, smiles, mz, variation, mass_error_da in derive_valid_fragments(
+                motif, [match], break_rings
+            ):
+                morgan_fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
+                    mol, radius=2, nBits=2048
+                )
 
                 fragment = DBMatch(**asdict(match))
                 fragment.morgan_fingerprint = morgan_fp.ToBase64()
@@ -197,13 +204,12 @@ def derive_valid_fragments(
     if n != 0:
         intensities /= n
 
-    # max_index = np.argmax(np.abs(intensities))
-    valid_mz = motif.peaks.mz[intensities > 0.05]
+    valid_mz = motif.peaks.mz[intensities > 0.5]
+
     valid_masses = np.abs(valid_mz)
 
     for db_match in matches:
         adduct = ADDUCT_RULES[db_match.adduct]
-        ion_mass = adduct.mass_shift
 
         mol = Chem.MolFromSmiles(db_match.smiles)
         if mol is None:
@@ -212,26 +218,30 @@ def derive_valid_fragments(
         for substructure in greedy_substructure_finder([mol]):
             fragment_mass = rdMolDescriptors.CalcExactMolWt(substructure)
 
-            for mz, variation, mass_error in filter_valid_mass(fragment_mass, ion_mass, valid_masses):
+            for mz, variation, mass_error in filter_valid_mass(
+                fragment_mass, adduct, valid_masses
+            ):
                 smiles = Chem.MolToSmiles(substructure)
                 yield substructure, smiles, mz, variation, mass_error
 
 
-def filter_valid_mass(fragment_mass, ion_mass, valid_masses):
+def filter_valid_mass(fragment_mass, adduct: Adduct, valid_masses):
     DALTON_ERROR = 0.1
-    variations = [
-        # neutral fragment
-        ("[M* + A]", fragment_mass + ion_mass),
-        ("[M*]", fragment_mass),
 
-        # fragment 'steals' H from other fragment
-        ("[M+H + A]", fragment_mass + ion_mass + H),
-        ("[M+H]", fragment_mass + H),
-
-        # fragment 'donates' H to other fragment
-        ("[M-H + A]", fragment_mass + ion_mass - H),
-        ("[M-H]", fragment_mass - H),
-    ]
+    variations = []
+    for i in range(adduct.multiplier):
+        n = i + 1
+        variations += [
+            # neutral fragment
+            (f"[{n}M* + A]", fragment_mass + adduct.mass_shift),
+            (f"[{n}M*]", fragment_mass),
+            # fragment 'steals' H from other fragment
+            (f"[{n}M+H + A]", fragment_mass + adduct.mass_shift + H),
+            (f"[{n}M+H]", fragment_mass + H),
+            # fragment 'donates' H to other fragment
+            (f"[{n}M-H + A]", fragment_mass + adduct.mass_shift - H),
+            (f"[{n}M-H]", fragment_mass - H),
+        ]
 
     for variation, mass in variations:
         delta = valid_masses - mass
@@ -297,7 +307,3 @@ def clear_folder(folder_path: str | Path):
         for file in folder_path.iterdir():
             if file.is_file():
                 file.write_text("")
-
-
-if __name__ == "__main__":
-    main()

@@ -1,0 +1,110 @@
+import argparse
+from pathlib import Path
+
+from src.annotation.annotation import construct_motif_graph, fragment_snapms
+from src.utils.cli import prepare_args
+from src.utils.configs import AnnotationConfig
+
+REPO = Path(__file__).parent.parent.parent.resolve()
+DEFAULT_ANNOTATION_CONFIG = REPO / "config" / "annotation.yaml"
+
+
+def main():
+    parser = build_parser()
+    config = parser.parse_args()
+
+    config.min_annotation_size = 2
+    config.adduct_list = ["[M+Na]+", "[2M+Na]+", "[M+K]+", "[2M+K]+", "[M+H]+"]
+    config.detect_adduct = False
+
+    config.display()
+
+    config = prepare_args(config, DEFAULT_ANNOTATION_CONFIG)
+    mn_config = AnnotationConfig(**dict(vars(config)))
+    mn_config.display()
+
+    G = construct_motif_graph(mn_config)
+    fragment_snapms(mn_config, G)
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(description="motif fragment based SNAP-MS tool.")
+    parser.add_argument(
+        "--defaults", type=str, default=None, help="Path to YAML config file."
+    )
+    parser.add_argument(
+        "-m",
+        "--mgf",
+        required=True,
+        type=Path,
+        help="Path to mgf file",
+    )
+    parser.add_argument(
+        "--model",
+        required=True,
+        type=str,
+        help="motif detection threshold",
+    )
+    parser.add_argument(
+        "-t",
+        "--threshold",
+        default=0.1,
+        type=float,
+        help="motif detection threshold",
+    )
+    parser.add_argument(
+        "-g",
+        "--graph",
+        type=Path,
+        default=None,
+        help="Optional output graph .cx path (defaults to stdout)",
+    )
+    parser.add_argument(
+        "--result-folder",
+        type=str,
+        default=None,
+        help="Destination directory for output.",
+    )
+    parser.add_argument(
+        "--reference-db",
+        type=str,
+        default=None,
+        help="Reference structure database path.",
+    )
+    parser.add_argument(
+        "--ppm-error", type=float, default=None, help="Mass tolerance error in PPM."
+    )
+    parser.add_argument(
+        "--min-cluster-size",
+        type=int,
+        default=None,
+        help="Minimum network cluster size.",
+    )
+    parser.add_argument(
+        "--max-cluster-size",
+        type=int,
+        default=None,
+        help="Maximum network cluster size.",
+    )
+    parser.add_argument(
+        "--min-annotation-size",
+        type=int,
+        default=None,
+        help="Minimum annotation cluster size.",
+    )
+    parser.add_argument(
+        "--cutoff",
+        type=float,
+        default=None,
+        help="Tanimoto similarity cutoff threshold.",
+    )
+    parser.add_argument(
+        "--adduct-list", nargs="+", default=None, help="List of candidate adduct forms."
+    )
+    parser.add_argument(
+        "--detect-adduct",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Automatically detect adduct annotations directly from graph properties.",
+    )
+    return parser
