@@ -11,16 +11,10 @@ DEFAULT_ANNOTATION_CONFIG = REPO / "config" / "annotation.yaml"
 
 def main():
     parser = build_parser()
-    config = parser.parse_args()
-
-    config.min_annotation_size = 2
-    config.adduct_list = ["[M+Na]+", "[2M+Na]+", "[M+K]+", "[2M+K]+", "[M+H]+"]
-    config.detect_adduct = False
-
-    config.display()
-
-    config = prepare_args(config, DEFAULT_ANNOTATION_CONFIG)
-    mn_config = AnnotationConfig(**dict(vars(config)))
+    args = parser.parse_args()
+    args.display()
+    args = prepare_args(args, DEFAULT_ANNOTATION_CONFIG)
+    mn_config = AnnotationConfig(**dict(vars(args)))
     mn_config.display()
 
     G = construct_motif_graph(mn_config)
