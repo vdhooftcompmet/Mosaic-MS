@@ -1,17 +1,16 @@
 import json
-from argparse import Namespace
 from pathlib import Path
 
 import numpy as np
 import tomotopy as tp
 from matchms import Spectrum
 
-from src.ms2lda.ms2lda import spectra_to_documents
 from src.utils.configs import AddMS2LDAConfig
 from src.utils.cx import read_cx, write_cx
+from src.utils.motifs import (
+    run_overlap_scores_calculation,
+)
 from src.utils.paths import MN_STYLE_FILE
-from src.utils.progress_bar import track
-from src.utils.motifs import run_overlap_scores_calculation
 
 
 def main(params: AddMS2LDAConfig) -> None:
@@ -38,13 +37,8 @@ def main(params: AddMS2LDAConfig) -> None:
         spectra.append(spectrum)
 
     model = tp.LDAModel.load(str(model_path))
-    topic_words = get_topic_words(model)
 
-    namespace = Namespace(**vars(params))
-    namespace.dataset_significant_digits = derive_significant_digits(topic_words)
-    namespace.dataset_acquisition_type = derive_dataset_acquisition_type(topic_words)
-
-    result = run_overlap_scores_calculation(spectra, model, namespace)
+    result = run_overlap_scores_calculation(spectra, model)
     _beta_matrix, _phi_matrix, _theta_matrix, overlap_scores = result
 
     threshold = float(params.threshold)
