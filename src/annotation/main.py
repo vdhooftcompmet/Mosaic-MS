@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 
-from src.annotation.annotation import construct_motif_graph, fragment_snapms
 from src.utils.cli import prepare_args
 from src.utils.configs import AnnotationConfig
 
@@ -16,6 +15,8 @@ def main():
     args = prepare_args(args, DEFAULT_ANNOTATION_CONFIG)
     mn_config = AnnotationConfig(**dict(vars(args)))
     mn_config.display()
+
+    from src.annotation.annotation import construct_motif_graph, fragment_snapms
 
     G = construct_motif_graph(mn_config)
     fragment_snapms(mn_config, G)
