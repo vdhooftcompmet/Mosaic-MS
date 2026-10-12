@@ -19,13 +19,13 @@ from matchms import Spectrum
 from src.add_ms2lda.main import (
     main,
     parse_spectrum_peaks,
-    run_overlap_scores_calculation,
 )
 from src.utils.motifs import (
     derive_dataset_acquisition_type,
     derive_significant_digits,
     get_topic_words,
-    spectra_to_documents
+    run_overlap_scores_calculation,
+    spectra_to_documents,
 )
 
 warnings.filterwarnings(
@@ -44,7 +44,6 @@ def mock_params():
         model="dummy_model.bin",
         graph="dummy_graph.cx2",
         threshold=0.2,
-        binning_decimals=2,
     )
 
 
@@ -139,9 +138,7 @@ def test_derive_dataset_acquisition_type(words: Sequence[str], expected_type) ->
 
 
 @patch("src.utils.motifs.spectra_to_documents")
-def test_run_overlap_scores_calculation(
-    mock_spectra_to_docs, mock_lda_model
-) -> None:
+def test_run_overlap_scores_calculation(mock_spectra_to_docs, mock_lda_model) -> None:
     spec1 = Spectrum(mz=np.array([100.1, 200.2]), intensities=np.array([10.0, 50.0]))
     spec2 = Spectrum(mz=np.array([150.3, 250.4]), intensities=np.array([20.0, 80.0]))
     spectra = [spec1, spec2]

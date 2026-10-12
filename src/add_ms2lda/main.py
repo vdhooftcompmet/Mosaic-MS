@@ -2,9 +2,12 @@ import argparse
 import json
 from pathlib import Path
 
+import tomotopy as tp
+
 from src.utils.cli import prepare_args
 from src.utils.configs import AddMS2LDAConfig
 from src.utils.cx import read_cx, write_cx
+from src.utils.motifs import run_overlap_scores_calculation
 from src.utils.paths import MN_STYLE_FILE
 
 REPO = Path(__file__).parent.parent.parent.resolve()
@@ -22,10 +25,7 @@ def main(args: argparse.Namespace):
 
 def add_ms2lda(params: AddMS2LDAConfig) -> None:
     import numpy as np
-    import tomotopy as tp
     from matchms import Spectrum
-
-    from src.utils.motifs import run_overlap_scores_calculation
 
     model_path = Path(params.model).resolve()
 

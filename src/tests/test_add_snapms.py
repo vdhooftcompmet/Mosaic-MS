@@ -107,7 +107,7 @@ def test_main_execution(
 
     # Check input functions were called with parameters
     mock_read_cx.assert_called_once_with(str(mock_params.graph))
-    mock_read_annotations.assert_called_once_with(mock_params.snapms)
+    mock_read_annotations.assert_called_once_with(str(mock_params.snapms))
 
     # Check that write_cx was called once for the main graph + once for each annotation file
     assert mock_write_cx.call_count == 1 + len(files)
