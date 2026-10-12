@@ -1,3 +1,4 @@
+import argparse
 import logging
 from collections import Counter, defaultdict, namedtuple
 from pathlib import Path
@@ -13,17 +14,31 @@ from sklearn.cluster import AgglomerativeClustering
 from spec2vec import Spec2Vec
 from spec2vec.vector_operations import cosine_similarity_matrix
 
+from src.utils.cli import prepare_args
 from src.utils.configs import AddMAGConfig
 from src.utils.progress_bar import track
 from src.utils.substructure import greedy_substructure_finder
 
 logging.getLogger("matchms").setLevel(logging.ERROR)
 
+REPO = Path(__file__).parent.parent.parent.resolve()
+DEFAULT_ADD_MAG_CONFIG = REPO / "config" / "add_mag.yaml"
+
+
+def main(args: argparse.Namespace) -> None:
+    args = prepare_args(args, DEFAULT_ADD_MAG_CONFIG)
+    config = AddMAGConfig(**dict(vars(args)))
+    config.display()
+
+    assert Path(config.library).exists(), "missing library"
+    add_mag(config)
+
+
 LibraryMatch = namedtuple("LibraryMatch", ["spectrum", "score"])
 Doc = namedtuple("Doc", ["words", "weights"])
 
 
-def main(config: AddMAGConfig) -> None:
+def add_mag(config: AddMAGConfig) -> None:
     motifs = list(load_from_mgf(str(config.motifs)))
     w2v = gensim.models.Word2Vec.load(str(config.spec2vec_model_path))
     model = Spec2Vec(
@@ -251,3 +266,53 @@ def agglomerative_clustering(masked_spectra_similarity: np.ndarray, delta=0.6):
     )
     labels = clustering.fit_predict(cosine_distance_matrix)
     return labels
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--defaults", type=str, default=None, help="Path to YAML config file."
+    )
+    parser.add_argument(
+        "--motifs",
+        required=True,
+        type=str,
+        help="Path to extracted Mass2Motifs MGF file.",
+    )
+    parser.add_argument(
+        "--spec2vec-model-path",
+        type=str,
+        default=None,
+        help="Path to Spec2Vec model file.",
+    )
+    parser.add_argument(
+        "--library",
+        type=str,
+        default=None,
+        help="Path to reference library MGF file.",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="Similarity score threshold.",
+    )
+    parser.add_argument(
+        "--cluster-delta",
+        type=float,
+        default=None,
+        help="Cluster delta threshold.",
+    )
+    parser.add_argument(
+        "--criterium",
+        type=str,
+        default=None,
+        help="Selection criterium metric.",
+    )
+    return parser
+
+
+if __name__ == "__main__":
+    parser = build_parser()
+    args = parser.parse_args()
+    main(args)

@@ -8,10 +8,7 @@ REPO = Path(__file__).parent.parent.parent.resolve()
 DEFAULT_ANNOTATION_CONFIG = REPO / "config" / "annotation.yaml"
 
 
-def main():
-    parser = build_parser()
-    args = parser.parse_args()
-    args.display()
+def main(args: argparse.Namespace):
     args = prepare_args(args, DEFAULT_ANNOTATION_CONFIG)
     mn_config = AnnotationConfig(**dict(vars(args)))
     mn_config.display()
@@ -103,3 +100,9 @@ def build_parser():
         help="Automatically detect adduct annotations directly from graph properties.",
     )
     return parser
+
+
+if __name__ == "__main__":
+    parser = build_parser()
+    args = parser.parse_args()
+    main(args)

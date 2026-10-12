@@ -35,4 +35,6 @@ def add_defaults(params, defaults_path) -> None:
 def load_params(path) -> argparse.Namespace:
     with open(path) as f:
         params = yaml.safe_load(f)
-    return argparse.Namespace(**params)
+    if params:
+        return argparse.Namespace(**params)
+    return argparse.Namespace()
