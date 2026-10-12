@@ -17,3 +17,5 @@ snakemake/effect_of_k/*
 .zed
 
 .ipynb_checkpoints
+
+notebooks
