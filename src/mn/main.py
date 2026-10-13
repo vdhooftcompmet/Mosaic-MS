@@ -1,11 +1,5 @@
 import argparse
-import hashlib
-from collections.abc import Callable
 from pathlib import Path
-
-import numpy as np
-from matchms import Spectrum
-from scipy.sparse import csr_matrix, load_npz, save_npz
 
 from src.utils.cli import prepare_args
 from src.utils.configs import MNConfig
@@ -22,6 +16,7 @@ def main(args: argparse.Namespace) -> None:
     config.display()
 
     from src.mn.mn import (
+        _similarity_cache,
         add_cluster_numbering,
         calculate_bootstrapping,
         clean_mgf,
@@ -42,58 +37,6 @@ def main(args: argparse.Namespace) -> None:
         add_cluster_numbering(graph)
 
         write_cx(graph, file_name, MN_STYLE_FILE)
-
-
-def _similarity_cache(
-    fn: Callable,
-) -> Callable[[list[Spectrum], MNConfig], tuple[np.ndarray, np.ndarray]]:
-
-    from src.mn.mn import plain_similarity
-
-    def inner(
-        spectra: list[Spectrum], config: MNConfig
-    ) -> tuple[np.ndarray, np.ndarray]:
-        files = {}
-        for file_type in ["avg_sim", "tot_sim", "tot_sup"]:
-            files[file_type] = Path(config.cache_folder) / _make_cache_name(
-                file_type, config
-            )
-
-        if all(f.exists() for f in files.values()):
-            data = {data_type: load_npz(f).toarray() for data_type, f in files.items()}
-        else:
-            data = {}
-            data["tot_sim"] = plain_similarity(spectra, config)
-            data["avg_sim"], data["tot_sup"] = fn(spectra, config)
-
-            if config.cache_similarity:
-                for file_type, file_name in files.items():
-                    matrix = csr_matrix(data[file_type])
-                    save_npz(str(file_name), csr_matrix(matrix))
-
-        if config.use_average_similarity:
-            return data["avg_sim"], data["tot_sup"]
-        else:
-            return data["tot_sim"], data["tot_sup"]
-
-    return inner
-
-
-def _make_cache_name(file_type: str, config: MNConfig) -> str:
-    hasher = hashlib.sha256()
-
-    with open(str(config.mgf), "rb") as f:
-        while chunk := f.read(65536):
-            hasher.update(chunk)
-
-    hasher.update(str(config.similarity_type).lower().encode("utf-8"))
-    hasher.update(str(file_type).lower().encode("utf-8"))
-    hasher.update(str(config.k).lower().encode("utf-8"))
-    hasher.update(str(config.B).lower().encode("utf-8"))
-    hasher.update(str(config.seed).lower().encode("utf-8"))
-    hexadecimal_string = hasher.hexdigest()
-    file_name = f"{config.similarity_type}-{hexadecimal_string[:20]}.npz"
-    return file_name
 
 
 def build_parser() -> argparse.ArgumentParser:
