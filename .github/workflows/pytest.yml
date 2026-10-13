@@ -29,12 +29,7 @@ jobs:
           environment-file: environment.yaml # Change to environment.yml if that's your filename
           use-mamba: true # Uses mamba for much faster environment resolution
 
-      # Step 3: Install your package in editable mode if necessary
-      - name: Install package
-        run: |
-          pip install -e .
-
-      # Step 4: Run pytest
+      # Step 3: Run pytest
       - name: Run pytest
         run: |
           pytest
