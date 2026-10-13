@@ -41,7 +41,7 @@ dependencies:
 
   # PyPI-only dependencies
   - pip:
-      - ms2deepscore=2.11
+      - ms2deepscore==2.11
       - dash>=2.18.1
       - dash_cytoscape>=1.0.2
       - dash_bootstrap_components>=1.6.0
