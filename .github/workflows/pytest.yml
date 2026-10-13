@@ -1,0 +1,37 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, master ]  # Trigger on pushes to main or master
+  pull_request:
+    branches: [ main, master ]  # Trigger on pull requests targeting main or master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out your repository code
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python version
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'  # Adjust to match your project's Python version
+          cache: 'pip'          # Optional: caches pip dependencies to speed up runs
+
+      # Step 3: Install dependencies and pytest
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # If you have an editable install or src layout, install your package too:
+          pip install -e .
+
+      # Step 4: Run your test suite
+      - name: Run pytest
+        run: |
+          pytest
