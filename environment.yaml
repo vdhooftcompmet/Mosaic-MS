@@ -32,7 +32,6 @@ dependencies:
   - dash-extensions==1.0.20
   - snakemake>=7.32.4
   - ndex2
-  - ms2deepscore=2.11
   - python-dateutil
   - rich
   - pulp==2.7.0
@@ -42,6 +41,7 @@ dependencies:
 
   # PyPI-only dependencies
   - pip:
+      - ms2deepscore=2.11
       - dash>=2.18.1
       - dash_cytoscape>=1.0.2
       - dash_bootstrap_components>=1.6.0
