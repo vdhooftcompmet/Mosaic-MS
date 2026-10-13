@@ -1,8 +1,6 @@
 import argparse
 from pathlib import Path
 
-from matchms.importing import load_from_mgf
-
 from src.utils.cli import prepare_args
 from src.utils.configs import MS2LDAConfig
 
@@ -14,6 +12,8 @@ def main(args: argparse.Namespace) -> None:
     args = prepare_args(args, DEFAULT_MS2LDA_CONFIG)
     config = MS2LDAConfig(**dict(vars(args)))
     config.display()
+
+    from matchms.importing import load_from_mgf
 
     from src.ms2lda.ms2lda import (
         clean_spectra,

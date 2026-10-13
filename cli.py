@@ -1,5 +1,4 @@
 import argparse
-from pathlib import Path
 
 from src.add_ms2lda.main import build_parser as build_add_ms2lda_parser
 from src.add_ms2lda.main import main as add_ms2lda_main
@@ -9,21 +8,12 @@ from src.annotation.main import build_parser as build_annotation_parser
 from src.annotation.main import main as run_annotation_main
 from src.mn.main import build_parser as build_mn_parser
 from src.mn.main import main as run_mn_main
-from src.ms2lda.mag import build_parser as build_add_mag_parser
-from src.ms2lda.mag import main as add_mag_main
+from src.ms2lda.mag_main import build_parser as build_add_mag_parser
+from src.ms2lda.mag_main import main as add_mag_main
 from src.ms2lda.main import build_parser as build_ms2lda_parser
 from src.ms2lda.main import main as run_ms2lda_main
 from src.snapms.main import build_parser as build_snapms_parser
 from src.snapms.main import main as run_snapms_main
-
-REPO = Path(__file__).parent.resolve()
-DEFAULT_MN_CONFIG = REPO / "config" / "mn.yaml"
-DEFAULT_MS2LDA_CONFIG = REPO / "config" / "ms2lda.yaml"
-DEFAULT_ADD_MS2LDA_CONFIG = REPO / "config" / "add_ms2lda.yaml"
-DEFAULT_ADD_MAG_CONFIG = REPO / "config" / "add_mag.yaml"
-DEFAULT_SNAPMS_CONFIG = REPO / "config" / "snapms.yaml"
-DEFAULT_ADD_SNAPMS_CONFIG = REPO / "config" / "add_snapms.yaml"
-DEFAULT_ANNOTATION_CONFIG = REPO / "config" / "annotation.yaml"
 
 
 def handle_run_mn(args: argparse.Namespace) -> None:
@@ -64,7 +54,7 @@ def handle_add_snapms(args: argparse.Namespace) -> None:
 
 
 def handle_run_annotation(args: argparse.Namespace) -> None:
-    """Executes motif fragment based SNAP-MS workflow[cite: 2]."""
+    """Executes motif fragment based SNAP-MS workflow."""
     run_annotation_main(args)
 
 
@@ -223,7 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run-annotation",
         parents=[build_annotation_parser()],
         add_help=False,
-        help="motif fragment based SNAP-MS tool[cite: 2].",
+        help="motif fragment based SNAP-MS tool.",
     )
     p_run_annotation.set_defaults(func=handle_run_annotation)
 
