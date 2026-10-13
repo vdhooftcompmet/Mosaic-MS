@@ -3,8 +3,6 @@ from pathlib import Path
 
 from src.utils.cli import prepare_args
 from src.utils.configs import MNConfig
-from src.utils.cx import write_cx
-from src.utils.paths import MN_STYLE_FILE
 
 REPO = Path(__file__).parent.parent.parent.resolve()
 DEFAULT_MN_CONFIG = REPO / "config" / "mn.yaml"
@@ -15,28 +13,9 @@ def main(args: argparse.Namespace) -> None:
     config = MNConfig(**dict(vars(args)))
     config.display()
 
-    from src.mn.mn import (
-        _similarity_cache,
-        add_cluster_numbering,
-        calculate_bootstrapping,
-        clean_mgf,
-        run_networking,
-    )
+    from src.mn.mn import mn
 
-    spectra = clean_mgf(config.mgf)
-    similarity, support = _similarity_cache(calculate_bootstrapping)(spectra, config)
-
-    file_names = {
-        "base": config.base_graph_path,
-        "threshold": config.threshold_graph_path,
-        "rescued": config.rescued_graph_path,
-    }
-
-    for graph_type, file_name in file_names.items():
-        graph = run_networking(spectra, similarity, support, graph_type, config)
-        add_cluster_numbering(graph)
-
-        write_cx(graph, file_name, MN_STYLE_FILE)
+    mn(config)
 
 
 def build_parser() -> argparse.ArgumentParser:

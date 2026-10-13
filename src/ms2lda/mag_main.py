@@ -1,11 +1,8 @@
 import argparse
-import logging
 from pathlib import Path
 
 from src.utils.cli import prepare_args
 from src.utils.configs import AddMAGConfig
-
-logging.getLogger("matchms").setLevel(logging.ERROR)
 
 REPO = Path(__file__).parent.parent.parent.resolve()
 DEFAULT_ADD_MAG_CONFIG = REPO / "config" / "add_mag.yaml"

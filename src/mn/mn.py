@@ -18,7 +18,26 @@ from spec2vec import Spec2Vec
 
 from src.utils.configs import MNConfig
 from src.utils.context import suppress_output
+from src.utils.cx import write_cx
 from src.utils.progress_bar import track
+from src.utils.paths import MN_STYLE_FILE
+
+
+def mn(config: MNConfig) -> None:
+    spectra = clean_mgf(config.mgf)
+    similarity, support = _similarity_cache(calculate_bootstrapping)(spectra, config)
+
+    file_names = {
+        "base": config.base_graph_path,
+        "threshold": config.threshold_graph_path,
+        "rescued": config.rescued_graph_path,
+    }
+
+    for graph_type, file_name in file_names.items():
+        graph = run_networking(spectra, similarity, support, graph_type, config)
+        add_cluster_numbering(graph)
+
+        write_cx(graph, file_name, MN_STYLE_FILE)
 
 
 def plain_similarity(
