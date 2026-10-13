@@ -6,7 +6,7 @@ channels:
   - defaults
 dependencies:
   # Core runtime & environment tools
-  - python>=3.10,<3.13
+  - python==3.12
   - pip
   - cpuonly
   - pytorch
