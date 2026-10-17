@@ -13,6 +13,12 @@ from matchms import Spectrum
 from matchms.exporting import save_as_mgf
 
 from src.utils.configs import MS2LDAConfig
+from src.utils.motifs import (
+    derive_dataset_acquisition_type,
+    derive_significant_digits,
+    get_topic_words,
+    spectra_to_documents,
+)
 from src.utils.progress_bar import track
 
 
@@ -52,48 +58,6 @@ def clean_spectra(
     return result
 
 
-def spectra_to_documents(
-    spectra: list[Spectrum], config: MS2LDAConfig | Namespace
-) -> list[list[str]]:
-
-    assert config.dataset_acquisition_type in ["DDA", "DIA"]
-
-    result = []
-
-    for spectrum in spectra:
-        spectrum = msfilters.normalize_intensities(spectrum)
-        if spectrum is None:
-            raise TypeError(
-                "invalid output of msfilters.normalize_intensities, expected Spectrum but got None"
-            )
-
-        document: list[str] = []
-        result.append(document)
-
-        for mz, intensity in zip(spectrum.peaks.mz, spectrum.peaks.intensities):
-            rounded_intensity = int((intensity * 100).round())
-            rounded_ms_value = round(mz, config.dataset_significant_digits)
-            word = f"frag@{rounded_ms_value}"
-
-            for _ in range(rounded_intensity):
-                document.append(word)
-
-        if config.dataset_acquisition_type == "DIA":
-            continue
-
-        for mz, intensity in zip(spectrum.losses.mz, spectrum.peaks.intensities):
-            rounded_intensity = int((intensity * 100).round())
-            rounded_ms_value = round(mz, config.dataset_significant_digits)
-            word = f"loss@{rounded_ms_value}"
-
-            for _ in range(rounded_intensity):
-                if rounded_ms_value <= 0.01:
-                    continue
-                document.append(word)
-
-    return result
-
-
 ConvergenceResult = namedtuple(
     "convergence_result",
     [
@@ -120,7 +84,10 @@ def train_model(
         seed=config.model_seed,
     )
     train_parameters = dict(
-        parallel=config.train_parallel, workers=config.train_workers
+        iterations=config.conv_step_size,
+        workers=config.train_workers,
+        parallel=config.train_parallel,
+        freeze_topics=False,
     )
 
     model = tp.LDAModel(k=config.nr_of_motifs, **model_parameters)
@@ -138,7 +105,7 @@ def train_model(
         description="running ms2lda...",
     ):
         model.train(
-            config.conv_step_size, **train_parameters
+            **train_parameters
         )  # model is doing x amount (step size) of iterations
 
         result.perplexity_history.append(model.perplexity)
@@ -203,17 +170,26 @@ def _has_model_converged(
     return True
 
 
-def extract_motifs(model: tp.LDAModel, config: MS2LDAConfig) -> list[Spectrum]:
+def extract_motifs(
+    model: tp.LDAModel,
+    top_n_words: int,
+    charge: int,
+    significant_digits: None | int = None,
+) -> list[Spectrum]:
+    topic_words = get_topic_words(model)
+
+    if significant_digits is None:
+        significant_digits = derive_significant_digits(topic_words)
 
     result = []
     for k in range(model.k):
-        topic = model.get_topic_words(k, top_n=config.top_n_words)
+        topic = model.get_topic_words(k, top_n=top_n_words)
 
         if len(topic) == 0:
             print(" Warning !! topic with 0 features detected")
 
         with patch.object(logging.getLogger("matchms"), "level", logging.ERROR):
-            mass2motif = _extract_motif(k, topic, config)
+            mass2motif = _extract_motif(k, topic, significant_digits, charge)
         if mass2motif is None:
             continue
         result.append(mass2motif)
@@ -221,28 +197,30 @@ def extract_motifs(model: tp.LDAModel, config: MS2LDAConfig) -> list[Spectrum]:
 
 
 def _extract_motif(
-    k: int, topic: list[tuple[str, float]], config: MS2LDAConfig
+    k: int,
+    topic: list[tuple[str, float]] | list[tuple[str, int, float]],
+    significant_digits: int,
+    charge: int,
 ) -> Spectrum:
-    significant_digits = config.dataset_significant_digits
-    charge = config.dataset_charge
 
-    fragments = []
+    fragments: list[tuple[float, float]] = []
 
     for motif_feature in topic:
-        feature, importance = motif_feature
+        feature = motif_feature[0]
+        importance = motif_feature[-1]
         importance = float(importance)
 
         if feature.startswith("frag@"):
-            mz_str: str = feature.removeprefix("frag@")
-            mz: float = float(mz_str)
+            feature_mz_str = feature.removeprefix("frag@")
+            feature_mz = float(feature_mz_str)
         elif feature.startswith("loss@"):
-            mz_str: str = feature.removeprefix("loss@")
-            mz: float = float(mz_str) * -1
+            feature_mz_str = feature.removeprefix("loss@")
+            feature_mz = float(feature_mz_str) * -1
         else:
             raise ValueError(f"invalid feature prefix {feature}")
 
-        mz: float = round(mz, significant_digits)
-        fragments.append((mz, importance))
+        feature_mz: float = round(feature_mz, significant_digits)
+        fragments.append((feature_mz, importance))
         continue
 
     fragments.sort()

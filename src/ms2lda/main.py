@@ -26,13 +26,22 @@ def main(args: argparse.Namespace) -> None:
 
     spectra = load_from_mgf(config.mgf)
     cleaned_spectra = clean_spectra(spectra, config)
-    spectral_docs = spectra_to_documents(cleaned_spectra, config)
+    spectral_docs = spectra_to_documents(
+        cleaned_spectra,
+        config.dataset_acquisition_type == "DIA",
+        config.dataset_significant_digits,
+    )
 
     model, _convergence_result = train_model(spectral_docs, config)
 
     store_model(model, config.model_path)
 
-    mass2motifs = extract_motifs(model, config)
+    mass2motifs = extract_motifs(
+        model,
+        config.top_n_words,
+        config.dataset_charge,
+        config.dataset_significant_digits,
+    )
     motifs_path = Path(config.motifs_path)
     store_mass2motifs(mass2motifs, motifs_path)
 
