@@ -8,12 +8,10 @@ from pathlib import Path
 import duckdb
 import networkx as nx
 import numpy as np
-import tomotopy as tp
 from matchms import Spectrum
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 
-from src.mn.mn import clean_mgf
 from src.snapms.snapms import (
     ADDUCT_RULES,
     Adduct,
@@ -29,97 +27,28 @@ from src.snapms.snapms import (
 from src.utils.configs import AnnotationConfig
 from src.utils.cx import read_cx, write_cx
 from src.utils.folders import prepare_directory
-from src.utils.motifs import run_overlap_scores_calculation
 from src.utils.paths import MOTIF_FILE
-from src.utils.progress_bar import track
-from src.utils.substructure import greedy_substructure_finder
+from src.utils.progress_bar import (
+    track,  # Assuming you are using rich for progress bars
+)
 
 logging.getLogger("matchms").setLevel(logging.ERROR)
 
 
 @dataclass
 class Fragment:
+    mol: Chem.Mol
     smiles: str
-    origin: set[int]
+    mz: float
+    variation: str
+    mass_error_da: float
 
 
-def construct_motif_graph(params: AnnotationConfig) -> nx.Graph:
-    model_path = Path(params.model).resolve()
-    spectra = list(clean_mgf(str(params.mgf)))
-
-    model = tp.LDAModel.load(str(model_path))
-    result = run_overlap_scores_calculation(spectra, model)
-    _beta_matrix, _phi_matrix, _theta_matrix, overlap_scores = result
-
-    threshold = float(params.threshold)
-
-    G = nx.Graph()
-
-    for motif_index in range(overlap_scores.shape[0]):
-        scores = overlap_scores[motif_index, :]
-
-        assert len(scores) == len(spectra)
-
-        above_threshold = np.where(scores > threshold)[0]
-        top_n = np.argsort(scores)[-10:]
-        spectrum_indices = np.intersect1d(above_threshold, top_n)
-
-        motif = topic_to_motif(model, motif_index)
-        motif_metadata = motif.to_dict()
-        motif_metadata = {f"motif_{k}": str(v) for k, v in motif_metadata.items()}
-
-        for spectrum_index in spectrum_indices:
-            spectrum = spectra[spectrum_index]
-            metadata = {k: str(v) for k, v in spectrum.to_dict().items()}
-
-            # !! add cluster numbering based on motif index, not based on size
-            metadata |= {"mn_cluster_id": motif_index}
-
-            # !! add motif peaks for later use
-            metadata |= motif_metadata
-
-            G.add_node(f"m{motif_index}s{spectrum_index}", **metadata)
-
-        for u, spectrum_index_u in enumerate(spectrum_indices):
-            for v, spectrum_index_v in enumerate(spectrum_indices):
-                if u <= v:
-                    continue
-
-                id_u = f"m{motif_index}s{spectrum_index_u}"
-                id_v = f"m{motif_index}s{spectrum_index_v}"
-                G.add_edge(id_u, id_v)
-
-    return G
-
-
-def topic_to_motif(model: tp.LDAModel, topic_index: int) -> Spectrum:
-    mz, intensities = [], []
-
-    topic_words = model.get_topic_words(topic_index, 50)
-
-    for pair in topic_words:
-        assert len(pair) == 2
-
-        word, probability = pair
-        mz_str = word[5:]
-        mz.append(float(mz_str))
-
-        if word.startswith("frag@"):
-            intensities.append(probability)
-        elif word.startswith("loss@"):
-            intensities.append(probability * -1)
-        else:
-            raise ValueError()
-
-    mz = np.array(mz)
-    intensities = np.array(intensities)
-
-    indices = np.argsort(mz)
-    mz = mz[indices]
-    intensities = intensities[indices]
-    motif = Spectrum(np.array(mz), np.array(intensities), {"motif_id": topic_index})
-
-    return motif
+@dataclass
+class Mass:
+    mz: float
+    variation: str
+    error: float
 
 
 def fragment_snapms(config: AnnotationConfig, graph=None) -> None:
@@ -145,9 +74,7 @@ def fragment_snapms(config: AnnotationConfig, graph=None) -> None:
         if len(nodes) > config.max_cluster_size:
             continue
 
-        matches = find_fragment_matches(
-            Gsuper, nodes, config, atlas_con, break_rings=False
-        )
+        matches = _find_fragment_matches(Gsuper, nodes, config, atlas_con)
         Gsub = build_molecular_families(matches, config)
         if Gsub is None:
             continue
@@ -159,45 +86,48 @@ def fragment_snapms(config: AnnotationConfig, graph=None) -> None:
         write_cx(Gsub, save_path, MOTIF_FILE)
 
 
-def find_fragment_matches(
+def _find_fragment_matches(
     mn: nx.Graph,
     nodes: set,
     config: AnnotationConfig,
     atlas_con: duckdb.DuckDBPyConnection,
-    break_rings: bool,
 ) -> list[DBMatch]:
 
     fragments = []
     for node in nodes:
         matches = find_db_matches(mn, {node}, config, atlas_con)
-        fragments = merge_duplicates(fragments)
-        motif = derive_motif(mn, node)
+
+        print(f"{len(matches) = }")
+        matches = merge_duplicates(matches)
+        motif = _derive_motif(mn, node)
 
         for match in matches:
-            for mol, smiles, mz, variation, mass_error_da in derive_valid_fragments(
-                motif, [match], break_rings
-            ):
+            for frag in _derive_valid_fragments(motif, match):
                 morgan_fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
-                    mol, radius=2, nBits=2048
+                    frag.mol, radius=2, nBits=2048
                 )
 
                 fragment = DBMatch(**asdict(match))
                 fragment.morgan_fingerprint = morgan_fp.ToBase64()
                 fragment.inchikey = ""
-                fragment.smiles = smiles
-                fragment.mz = mz
-                fragment.variation = variation
-                fragment.mass_error_da = mass_error_da
+                fragment.smiles = frag.smiles
+                fragment.mz = frag.mz
+                fragment.variation = frag.variation
+                fragment.mass_error_da = frag.mass_error_da
                 fragments.append(fragment)
 
+    print(f"{len(fragments) = }")
     fragments = assign_mass_cluster(fragments)
 
     return fragments
 
 
-def derive_valid_fragments(
-    motif: Spectrum, matches: list[DBMatch], break_rings: bool
-) -> Generator:
+def _derive_valid_fragments(motif: Spectrum, db_match: DBMatch) -> Generator:
+    print(f"Total motif peaks: {len(motif.peaks.mz)}")
+
+    if len(motif.peaks.mz) == 0:
+        return
+
     intensities = motif.peaks.intensities
     intensities[intensities < 0] = 0
     n = np.max(intensities)
@@ -205,27 +135,30 @@ def derive_valid_fragments(
         intensities /= n
 
     valid_mz = motif.peaks.mz[intensities > 0.5]
+    print(f"Valid Mz after intensity filter (>0.5): {len(valid_mz)}")
 
     valid_masses = np.abs(valid_mz)
 
-    for db_match in matches:
-        adduct = ADDUCT_RULES[db_match.adduct]
+    adduct = ADDUCT_RULES[db_match.adduct]
 
-        mol = Chem.MolFromSmiles(db_match.smiles)
-        if mol is None:
-            continue
+    mol = Chem.MolFromSmiles(db_match.smiles)
+    print(f"Base molecule loaded: {mol is not None}")
+    if mol is None:
+        return
 
-        for substructure in greedy_substructure_finder([mol]):
-            fragment_mass = rdMolDescriptors.CalcExactMolWt(substructure)
+    substructures = list(_greedy_substructure_finder([mol]))
+    print(f"Substructures found: {len(substructures)}")
+    for substructure in substructures:
+        fragment_mass = rdMolDescriptors.CalcExactMolWt(substructure)
 
-            for mz, variation, mass_error in filter_valid_mass(
-                fragment_mass, adduct, valid_masses
-            ):
-                smiles = Chem.MolToSmiles(substructure)
-                yield substructure, smiles, mz, variation, mass_error
+        for mass in _filter_valid_mass(fragment_mass, adduct, valid_masses):
+            smiles = Chem.MolToSmiles(substructure)
+            yield Fragment(substructure, smiles, mass.mz, mass.variation, mass.error)
 
 
-def filter_valid_mass(fragment_mass, adduct: Adduct, valid_masses):
+# TODO
+# probably the motif orderand cluster order aren't aligned, wrong filter applies, no results
+def _filter_valid_mass(fragment_mass: float, adduct: Adduct, valid_masses: np.ndarray):
     DALTON_ERROR = 0.1
 
     variations = []
@@ -250,14 +183,16 @@ def filter_valid_mass(fragment_mass, adduct: Adduct, valid_masses):
         mz = valid_masses[i]
         mass_error = delta[i]
         if np.abs(mass_error) <= DALTON_ERROR:
-            yield mz, variation, mass_error
-            return
+            yield Mass(mz, variation, mass_error)
 
 
-def derive_motif(G: nx.Graph, node: str | int) -> Spectrum:
+def _derive_motif(G: nx.Graph, node: str | int) -> Spectrum:
     node_data = G.nodes[node]
 
-    peaks_raw = node_data.get("motif_peaks_json", "[]")
+    peaks_raw = node_data.get("motif_peaks_json")
+    if peaks_raw is None:
+        raise ValueError()
+
     peaks = json.loads(peaks_raw) if isinstance(peaks_raw, str) else peaks_raw
 
     metadata = {}
@@ -283,7 +218,7 @@ def derive_motif(G: nx.Graph, node: str | int) -> Spectrum:
         mz = mz[sort_indices]
         intensities = intensities[sort_indices]
 
-        intensities = normalize_intensities(intensities)
+        intensities = _normalize_intensities(intensities)
 
     spectrum = Spectrum(
         mz=mz,
@@ -294,7 +229,10 @@ def derive_motif(G: nx.Graph, node: str | int) -> Spectrum:
     return spectrum
 
 
-def normalize_intensities(intensities: np.ndarray) -> np.ndarray:
+def _normalize_intensities(intensities: np.ndarray) -> np.ndarray:
+    if len(intensities) == 0:
+        return intensities
+
     max_intensity = intensities.max()
     if max_intensity == 0:
         return intensities
@@ -307,3 +245,43 @@ def clear_folder(folder_path: str | Path):
         for file in folder_path.iterdir():
             if file.is_file():
                 file.write_text("")
+
+
+def _greedy_substructure_finder(mols: list[Chem.Mol]):
+    for mol in mols:
+        yield mol
+
+        n = mol.GetNumBonds()
+        if n == 0:
+            continue
+
+        is_in_ring = np.array([mol.GetBondWithIdx(i).IsInRing() for i in range(n)])
+        is_aromatic = np.array(
+            [mol.GetBondWithIdx(i).GetIsAromatic() for i in range(n)]
+        )
+        is_single = np.array(
+            [
+                mol.GetBondWithIdx(i).GetBondType() == Chem.BondType.SINGLE
+                for i in range(n)
+            ]
+        )
+
+        valid_single_bonds = np.flatnonzero(~is_in_ring & ~is_aromatic & is_single)
+        for index in valid_single_bonds:
+            fragmented_mol = Chem.FragmentOnBonds(mol, [int(index)])
+            fragments = Chem.GetMolFrags(
+                fragmented_mol, asMols=True, sanitizeFrags=False
+            )
+            for frag in fragments:
+                res = _clean_and_check_fragment(frag)
+                if res is not None:
+                    yield res
+
+
+def _clean_and_check_fragment(frag):
+    """Clears aromaticity, sanitizes, and deduplicates on-the-fly to save compute."""
+    try:
+        Chem.SanitizeMol(frag)
+        return frag
+    except Exception:
+        return None

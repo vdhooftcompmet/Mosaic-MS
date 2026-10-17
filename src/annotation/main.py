@@ -3,6 +3,7 @@ from pathlib import Path
 
 from src.utils.cli import prepare_args
 from src.utils.configs import AnnotationConfig
+from src.utils.cx import write_cx
 
 REPO = Path(__file__).parent.parent.parent.resolve()
 DEFAULT_ANNOTATION_CONFIG = REPO / "config" / "annotation.yaml"
@@ -13,10 +14,18 @@ def main(args: argparse.Namespace):
     mn_config = AnnotationConfig(**dict(vars(args)))
     mn_config.display()
 
-    from src.annotation.annotation import construct_motif_graph, fragment_snapms
+    from matchms.importing import load_from_mgf
 
-    G = construct_motif_graph(mn_config)
-    fragment_snapms(mn_config, G)
+    from src.annotation.cluster import build_spectra_graph
+    from src.annotation.fragment import fragment_snapms
+    from src.annotation.merge import merge_motifs
+
+    motifs, motif_graph = merge_motifs(mn_config.models)
+    spectra = list(load_from_mgf(mn_config.mgf))
+    spectra_graph = build_spectra_graph(motifs, spectra)
+    write_cx(spectra_graph, "xxxxxx.cx")
+
+    fragment_snapms(mn_config, spectra_graph)
 
 
 def build_parser():
@@ -32,10 +41,10 @@ def build_parser():
         help="Path to mgf file",
     )
     parser.add_argument(
-        "--model",
+        "--models",
+        nargs="+",
         required=True,
-        type=str,
-        help="motif detection threshold",
+        help="List of models used to derive motifs",
     )
     parser.add_argument(
         "-t",
