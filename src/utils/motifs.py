@@ -1,10 +1,10 @@
 import argparse
 
+import matchms.filtering as msfilters
 import numpy as np
 import tomotopy as tp
 from matchms import Spectrum
 
-from src.ms2lda.ms2lda import spectra_to_documents
 from src.utils.progress_bar import track
 
 
@@ -15,9 +15,8 @@ def run_overlap_scores_calculation(
 
     topic_words = get_topic_words(model)
 
-    namespace = argparse.Namespace()
-    namespace.dataset_significant_digits = derive_significant_digits(topic_words)
-    namespace.dataset_acquisition_type = derive_dataset_acquisition_type(topic_words)
+    significant_digits = derive_significant_digits(topic_words)
+    calc_losses = derive_dataset_acquisition_type(topic_words) == "DIA"
 
     spectra = [s for s in spectra]
 
@@ -25,7 +24,7 @@ def run_overlap_scores_calculation(
     n_docs = len(spectra)
     n_topics = model.k
 
-    words_per_spectra = spectra_to_documents(spectra, namespace)
+    words_per_spectra = spectra_to_documents(spectra, calc_losses, significant_digits)
 
     documents = []
     for words in track(words_per_spectra, description="detecting motifs..."):
@@ -112,3 +111,54 @@ def derive_dataset_acquisition_type(topic_words) -> str:
     if has_losses:
         return "DDA"
     return "DIA"
+
+
+def spectra_to_documents(
+    spectra: list[Spectrum],
+    calc_losses: bool,
+    significant_digits: int,
+) -> list[list[str]]:
+
+    result = []
+
+    for spectrum in spectra:
+        spectrum = msfilters.normalize_intensities(spectrum)
+        if spectrum is None:
+            raise TypeError(
+                "invalid output of msfilters.normalize_intensities, expected Spectrum but got None"
+            )
+
+        document: list[str] = []
+        result.append(document)
+
+        for mz, intensity in zip(spectrum.peaks.mz, spectrum.peaks.intensities):
+            rounded_intensity = int((intensity * 100).round())
+            rounded_ms_value = round(mz, significant_digits)
+
+            if mz >= 0:
+                word = f"frag@{rounded_ms_value}"
+            elif calc_losses:
+                word = f"loss@{rounded_ms_value}"
+            else:
+                continue
+
+            for _ in range(rounded_intensity):
+                document.append(word)
+
+        if not calc_losses:
+            continue
+
+        if spectrum.losses is None:
+            continue
+
+        for mz, intensity in zip(spectrum.losses.mz, spectrum.peaks.intensities):
+            rounded_intensity = int((intensity * 100).round())
+            rounded_ms_value = round(mz, significant_digits)
+            word = f"loss@{rounded_ms_value}"
+
+            for _ in range(rounded_intensity):
+                if rounded_ms_value <= 0.01:
+                    continue
+                document.append(word)
+
+    return result

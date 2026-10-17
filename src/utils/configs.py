@@ -27,8 +27,20 @@ def _print_formatted_config(header_title: str, instance: object) -> None:
         label = f.name.replace("_", " ").title()
         val = getattr(instance, f.name)
         padding = " " * (max_label_len - len(label))
-        print(f"  • {label}:{padding} {val}")
+
+        line = f"  • {label}:{padding} {val}"
+        if len(line) >= 120 and isinstance(val, list):
+            _print_long_list(label, val, padding, max_label_len)
+        else:
+            print(line)
     print("=" * 60)
+
+
+def _print_long_list(label, val, padding, max_label_len):
+    print(f"  • {label}:{padding} [")
+    for item in val:
+        print(f"    {max_label_len * ' '}    {item}")
+    print(f"    {max_label_len * ' '}  ]")
 
 
 @dataclass
@@ -109,7 +121,9 @@ class AddMAGConfig:
 
     def display(self) -> None:
         """Display Add MAG configuration parameters."""
-        _print_formatted_config("Add Motif Annotation Guidance (MAG) Configured Options", self)
+        _print_formatted_config(
+            "Add Motif Annotation Guidance (MAG) Configured Options", self
+        )
 
 
 @dataclass
@@ -199,7 +213,7 @@ class MNConfig:
 @dataclass
 class AnnotationConfig:
     mgf: str
-    model: str
+    models: list[str]
     threshold: float
 
     graph: str
@@ -217,9 +231,12 @@ class AnnotationConfig:
     remove_duplicates: bool
     detect_adduct: bool
 
+    dataset_acquisition_type: str
+    dataset_significant_digits: int
+
     def __post_init__(self):
         self.mgf = _resolve_path(self.mgf)
-        self.model = _resolve_path(self.model)
+        self.models = [_resolve_path(m) for m in self.models]
         self.graph = _resolve_path(self.graph)
         self.reference_db = _resolve_path(self.reference_db)
         self.result_folder = _resolve_path(self.result_folder)
