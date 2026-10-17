@@ -19,8 +19,8 @@ from spec2vec import Spec2Vec
 from src.utils.configs import MNConfig
 from src.utils.context import suppress_output
 from src.utils.cx import write_cx
-from src.utils.progress_bar import track
 from src.utils.paths import MN_STYLE_FILE
+from src.utils.progress_bar import track
 
 
 def mn(config: MNConfig) -> None:
@@ -73,7 +73,6 @@ def calculate_bootstrapping(
     total_pair_similarities = np.zeros((dataset_size, dataset_size), dtype=float)
     total_edge_support = np.zeros((dataset_size, dataset_size), dtype=float)
 
-    print(config.B)
     for b in track(range(config.B), description="running specreboot..."):
         try:
             masked_spectra = _mask_spectra_globally(
