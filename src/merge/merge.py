@@ -18,7 +18,7 @@ logging.getLogger("matchms").setLevel(logging.ERROR)
 def merge_motifs(config: MergeConfig) -> tuple[list[Spectrum], nx.Graph]:
 
     all_motifs = []
-    for path in config.motif_paths:
+    for path in config.motif_files:
         if path.endswith(".lda"):
             model = tp.LDAModel.load(path)
             motifs = extract_motifs(model, top_n_words=50, charge=1)

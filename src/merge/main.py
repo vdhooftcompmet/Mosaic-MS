@@ -11,16 +11,16 @@ DEFAULT_ANNOTATION_CONFIG = REPO / "config" / "merge.yaml"
 
 def main(args: argparse.Namespace):
     args = prepare_args(args, DEFAULT_ANNOTATION_CONFIG)
-    mn_config = MergeConfig(**dict(vars(args)))
-    mn_config.display()
+    config = MergeConfig(**dict(vars(args)))
+    config.display()
 
     from matchms.exporting import save_as_mgf
 
     from src.merge.merge import merge_motifs
 
-    motifs, G = merge_motifs(args.model_paths)
-    save_as_mgf(motifs, args.out_motifs, file_mode="w")
-    write_cx(G, args.out_graph)
+    motifs, G = merge_motifs(config)
+    save_as_mgf(motifs, config.out_motifs, file_mode="w")
+    write_cx(G, config.out_graph)
 
 
 def build_parser():
@@ -50,7 +50,7 @@ def build_parser():
         help="Optional output graph .cx path (defaults to stdout)",
     )
     parser.add_argument(
-        "o",
+        "-o",
         "--out-motifs",
         type=str,
         default=None,

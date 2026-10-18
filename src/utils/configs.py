@@ -248,14 +248,14 @@ class AnnotationConfig:
 
 @dataclass
 class MergeConfig:
-    motif_paths: list[str]
+    motif_files: list[str]
     threshold: float
 
     out_graph: str
     out_motifs: str
 
     def __post_init__(self):
-        self.motif_paths = [_resolve_path(m) for m in self.motif_paths]
+        self.motif_files = [_resolve_path(m) for m in self.motif_files]
         self.out_graph = _resolve_path(self.out_graph)
         self.out_motifs = _resolve_path(self.out_motifs)
 
