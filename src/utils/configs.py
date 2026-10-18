@@ -213,7 +213,7 @@ class MNConfig:
 @dataclass
 class AnnotationConfig:
     mgf: str
-    models: list[str]
+    motifs: str
     threshold: float
 
     graph: str
@@ -236,7 +236,7 @@ class AnnotationConfig:
 
     def __post_init__(self):
         self.mgf = _resolve_path(self.mgf)
-        self.models = [_resolve_path(m) for m in self.models]
+        self.motifs = _resolve_path(self.motifs)
         self.graph = _resolve_path(self.graph)
         self.reference_db = _resolve_path(self.reference_db)
         self.result_folder = _resolve_path(self.result_folder)

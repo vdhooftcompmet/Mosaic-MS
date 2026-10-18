@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from src.add_ms2lda.main import build_parser as build_add_ms2lda_parser
 from src.add_ms2lda.main import main as add_ms2lda_main
@@ -6,6 +7,8 @@ from src.add_snapms.main import build_parser as build_add_snapms_parser
 from src.add_snapms.main import main as add_snapms_main
 from src.annotation.main import build_parser as build_annotation_parser
 from src.annotation.main import main as run_annotation_main
+from src.merge.main import build_parser as build_merge_parser
+from src.merge.main import main as run_merge_main
 from src.mn.main import build_parser as build_mn_parser
 from src.mn.main import main as run_mn_main
 from src.ms2lda.mag_main import build_parser as build_add_mag_parser
@@ -14,6 +17,7 @@ from src.ms2lda.main import build_parser as build_ms2lda_parser
 from src.ms2lda.main import main as run_ms2lda_main
 from src.snapms.main import build_parser as build_snapms_parser
 from src.snapms.main import main as run_snapms_main
+from src.utils.folders import prepare_directory
 
 
 def handle_run_mn(args: argparse.Namespace) -> None:
@@ -27,9 +31,7 @@ def handle_run_ms2lda(args: argparse.Namespace) -> None:
 
 
 def handle_add_ms2lda(args: argparse.Namespace) -> None:
-    """
-    Integrates motif detection and metadata injection into target CX graph.
-    """
+    """Integrates motif detection and metadata injection into target CX graph."""
     add_ms2lda_main(args)
 
 
@@ -47,9 +49,7 @@ def handle_run_snapms(args: argparse.Namespace) -> None:
 
 
 def handle_add_snapms(args: argparse.Namespace) -> None:
-    """
-    Appends SnapMS annotations to a CX graph and flags SMILES.
-    """
+    """Appends SnapMS annotations to a CX graph and flags SMILES."""
     add_snapms_main(args)
 
 
@@ -58,73 +58,95 @@ def handle_run_annotation(args: argparse.Namespace) -> None:
     run_annotation_main(args)
 
 
-def handle_run_all(args: argparse.Namespace) -> None:
-    """Executes the complete Mosaic-MS pipeline sequentially."""
+def handle_run_merge(args: argparse.Namespace) -> None:
+    """Merges Mass2Motifs across multiple models or files."""
+    run_merge_main(args)
 
-    # 1. Run Molecular Networking
-    print("\n--- [Step 1/6] Running Molecular Networking ---")
+
+def handle_run_all(args: argparse.Namespace) -> None:
+    """Executes the updated parallel Mosaic-MS pipeline sequentially/concurrently."""
+
+    dir = Path("run_all")
+    prepare_directory(dir, overwrite=True)
+
+    # get input
+    mgf = args.mgf
+
+    # define file names
+    base_graph = str(dir / "base.cx")
+    threshold_graph = str(dir / "threshold.cx")
+    rescued_graph = str(dir / "rescued.cx")
+
+    print("  -> Building Molecular Network...")
     handle_run_mn(
         argparse.Namespace(
-            mgf=args.mgf,
-            defaults=args.mn_defaults,
-            base_graph_path=str(args.base_graph_path),
+            mgf=mgf,
+            base_graph_path=base_graph,
+            threshold_graph_path=threshold_graph,
+            rescued_graph_path=rescued_graph,
         )
     )
 
-    # 2. Run MS2LDA
-    print("\n--- [Step 2/6] Running MS2LDA ---")
-    handle_run_ms2lda(
-        argparse.Namespace(
-            mgf=args.mgf,
-            defaults=args.ms2lda_defaults,
-            model_path=str(args.ms2lda_model_path),
-            motifs_path=str(args.ms2lda_motifs_path),
-        )
+    # define file names
+    k_values = (
+        [int(k) for k in args.k_values.split(",")]
+        if isinstance(args.k_values, str)
+        else args.k_values
     )
+    motif_paths = [str(dir / f"motifs_k{k}.mgf") for k in k_values]
+    model_paths = [str(dir / f"model_k{k}.lda") for k in k_values]
 
-    # 3. Add MS2LDA Results to Graph
-    print("\n--- [Step 3/6] Adding MS2LDA Results to Graph ---")
-    handle_add_ms2lda(
-        argparse.Namespace(
-            defaults=args.add_ms2lda_defaults,
-            graph=args.base_graph_path,
-            model=args.ms2lda_model_path,
-            threshold=args.ms2lda_threshold,
-        )
-    )
-
-    # 4. Add MAG (Motif Annotation Guidance)
-    print("\n--- [Step 4/6] Running Motif Annotation Guidance (MAG) ---")
-    try:
-        assert False
-        handle_add_mag(
+    print(f"  -> Running MS2LDA for multiple k values: {k_values}...")
+    for k, motifs_p, model_p in zip(k_values, motif_paths, model_paths):
+        run_ms2lda_main(
             argparse.Namespace(
-                defaults=args.add_mag_defaults,
-                motifs=args.ms2lda_motifs_path,
+                mgf=mgf,
+                model_path=model_p,
+                motifs_path=motifs_p,
+                nr_of_motifs=k,
             )
         )
-    except AssertionError:
-        print("!! Skipped this step due to missing library !!")
 
-    # 5. Run SNAP-MS
-    print("\n--- [Step 5/6] Running SNAP-MS ---")
-    handle_run_snapms(
+    # define files
+    merged_motifs = str(dir / "merged_motifs.mgf")
+    merged_graph = str(dir / "merged_motifs.cx")
+
+    print("  -> Merging Mass2Motifs...")
+    run_merge_main(
         argparse.Namespace(
-            graph=str(args.base_graph_path),
-            defaults=args.snapms_defaults,
-            result_folder=str(args.snapms_result_folder),
+            motif_files=motif_paths,
+            out_graph=merged_graph,
+            out_motifs=merged_motifs,
         )
     )
 
-    # 6. Add SNAP-MS Results to Graph
-    print("\n--- [Step 6/6] Adding SNAP-MS Results to Graph ---")
-    handle_add_snapms(
+    # define files
+    annotation_results = str(dir / "motif_annotation")
+
+    print("  -> Running Motif-based Annotation...")
+    run_annotation_main(
         argparse.Namespace(
-            defaults=args.add_snapms_defaults,
-            graph=args.base_graph_path,
-            snapms=args.snapms_result_folder,
+            mgf=mgf,
+            motifs=merged_motifs,
+            result_folder=annotation_results,
         )
     )
+    # define files
+    graphs = [base_graph, threshold_graph, rescued_graph]
+    results = [
+        str(dir / "snapms_base"),
+        str(dir / "snapms_threshold"),
+        str(dir / "snapms_rescued"),
+    ]
+
+    print("  -> Running SNAP-MS on Molecular Network...")
+    for graph, res in zip(graphs, results):
+        handle_run_snapms(
+            argparse.Namespace(
+                graph=graph,
+                result_folder=res,
+            )
+        )
 
     print("\n Pipeline execution completed successfully!")
 
@@ -140,20 +162,16 @@ def build_parser() -> argparse.ArgumentParser:
         dest="command", required=True, help="Sub-command to execute"
     )
 
-    # --------------------------------------
     # 1. run-mn
-    # --------------------------------------
     p_run_mn = subparsers.add_parser(
         "run-mn",
         parents=[build_mn_parser()],
         add_help=False,
-        help="Build a molecular network from MGF spectrum data using SpecReBooted.",
+        help="Build a molecular network from MGF spectrum data using SpecReBoot.",
     )
     p_run_mn.set_defaults(func=handle_run_mn)
 
-    # --------------------------------------
     # 2. run-ms2lda
-    # --------------------------------------
     p_run_ms2lda = subparsers.add_parser(
         "run-ms2lda",
         parents=[build_ms2lda_parser()],
@@ -162,9 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_run_ms2lda.set_defaults(func=handle_run_ms2lda)
 
-    # --------------------------------------
     # 3. add-ms2lda
-    # --------------------------------------
     p_add_ms2lda = subparsers.add_parser(
         "add-ms2lda",
         parents=[build_add_ms2lda_parser()],
@@ -173,9 +189,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_add_ms2lda.set_defaults(func=handle_add_ms2lda)
 
-    # --------------------------------------
     # 4. add-mag
-    # --------------------------------------
     p_add_mag = subparsers.add_parser(
         "add-mag",
         parents=[build_add_mag_parser()],
@@ -184,9 +198,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_add_mag.set_defaults(func=handle_add_mag)
 
-    # --------------------------------------
     # 5. run-snapms
-    # --------------------------------------
     p_run_snapms = subparsers.add_parser(
         "run-snapms",
         parents=[build_snapms_parser()],
@@ -195,9 +207,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_run_snapms.set_defaults(func=handle_run_snapms)
 
-    # --------------------------------------
     # 6. add-snapms
-    # --------------------------------------
     p_add_snapms = subparsers.add_parser(
         "add-snapms",
         parents=[build_add_snapms_parser()],
@@ -206,9 +216,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_add_snapms.set_defaults(func=handle_add_snapms)
 
-    # --------------------------------------
     # 7. run-annotation
-    # --------------------------------------
     p_run_annotation = subparsers.add_parser(
         "run-annotation",
         parents=[build_annotation_parser()],
@@ -217,80 +225,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_run_annotation.set_defaults(func=handle_run_annotation)
 
-    # --------------------------------------
-    # 8. run-all
-    # --------------------------------------
+    # 8. run-merge
+    p_run_merge = subparsers.add_parser(
+        "run-merge",
+        parents=[build_merge_parser()],
+        add_help=False,
+        help="Merge Mass2Motifs across multiple models or files.",
+    )
+    p_run_merge.set_defaults(func=handle_run_merge)
+
+    # 9. run-all
     p_run_all = subparsers.add_parser(
-        "run-all", help="Execute the full end-to-end Mosaic-MS pipeline sequentially."
+        "run-all",
+        help="Execute the full end-to-end Mosaic-MS pipeline sequentially/concurrently.",
     )
     p_run_all.add_argument(
         "--mgf", "-m", type=str, required=True, help="Path to input MGF spectrum file."
     )
     p_run_all.add_argument(
-        "--base-graph-path",
+        "--k-values",
         type=str,
-        default="results/base.cx",
-        help="Output path for intermediate and final network CX graph file.",
-    )
-    p_run_all.add_argument(
-        "--ms2lda-model-path",
-        type=str,
-        default="results/model.lda",
-        help="Output path for trained MS2LDA model file.",
-    )
-    p_run_all.add_argument(
-        "--ms2lda-motifs-path",
-        type=str,
-        default="results/motifs.mgf",
-        help="Output path for extracted MS2LDA Mass2Motifs.",
-    )
-    p_run_all.add_argument(
-        "--snapms-result-folder",
-        type=str,
-        default="results/snapms",
-        help="Output directory for SNAP-MS intermediate results.",
-    )
-    p_run_all.add_argument(
-        "--mn-defaults",
-        type=str,
-        default=None,
-        help="Path to YAML config file for MN step.",
-    )
-    p_run_all.add_argument(
-        "--ms2lda-defaults",
-        type=str,
-        default=None,
-        help="Path to YAML config file for MS2LDA step.",
-    )
-    p_run_all.add_argument(
-        "--add-ms2lda-defaults",
-        type=str,
-        default=None,
-        help="Path to YAML config file for Add MS2LDA step.",
-    )
-    p_run_all.add_argument(
-        "--add-mag-defaults",
-        type=str,
-        default=None,
-        help="Path to YAML config file for Add MAG step.",
-    )
-    p_run_all.add_argument(
-        "--snapms-defaults",
-        type=str,
-        default=None,
-        help="Path to YAML config file for SNAP-MS step.",
-    )
-    p_run_all.add_argument(
-        "--add-snapms-defaults",
-        type=str,
-        default=None,
-        help="Path to YAML config file for Add SNAP-MS step.",
-    )
-    p_run_all.add_argument(
-        "--ms2lda-threshold",
-        type=float,
-        default=0.01,
-        help="MS2LDA motif overlap threshold.",
+        required=True,
+        help="Comma-separated list of k values for multi-k MS2LDA runs.",
     )
     p_run_all.set_defaults(func=handle_run_all)
 
