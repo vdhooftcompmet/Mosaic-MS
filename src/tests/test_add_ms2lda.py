@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 import networkx as nx
 import numpy as np
 import pytest
+from matchms import Spectrum
 
 from src.add_ms2lda.add_ms2lda import (
     add_ms2lda,
@@ -25,7 +26,7 @@ from src.add_ms2lda.add_ms2lda import (
 def mock_params():
     """Fixture providing CLI/Config arguments as a Namespace object."""
     return Namespace(
-        model="dummy_model.bin",
+        motifs="dummy_motifs.mgf",
         graph="dummy_graph.cx2",
         threshold=0.2,
     )
@@ -50,14 +51,6 @@ def mock_graph():
     return G
 
 
-@pytest.fixture
-def mock_lda_model():
-    """Fixture providing a mocked tomotopy LDAModel."""
-    model = MagicMock()
-    model.k = 2  # 2 topics
-    return model
-
-
 # --- Unit Tests for Helpers ---
 
 
@@ -73,58 +66,38 @@ def test_parse_spectrum_peaks(input_data, expected) -> None:
     assert result == expected
 
 
-# --- Validation Tests ---
-
-
-def test_add_ms2lda_file_not_found(mock_params) -> None:
-    mock_params.model = "non_existent_file.bin"
-    with pytest.raises(AssertionError, match="Model file does not exist"):
-        add_ms2lda(mock_params)
-
-
-def test_add_ms2lda_model_path_is_directory(mock_params, tmp_path) -> None:
-    mock_params.model = str(tmp_path)
-    with pytest.raises(AssertionError, match="is a directory, not a file"):
-        add_ms2lda(mock_params)
-
-
 # --- Pipeline Integration Test with Mocks ---
 
 
 @patch("src.add_ms2lda.add_ms2lda.write_cx")
 @patch("src.add_ms2lda.add_ms2lda.read_cx")
-@patch("src.utils.motifs.run_overlap_scores_calculation")
-@patch("src.add_ms2lda.add_ms2lda.tp.LDAModel.load")
-@patch("src.add_ms2lda.add_ms2lda.Path.is_file", return_value=True)
-@patch("src.add_ms2lda.add_ms2lda.Path.exists", return_value=True)
+@patch("src.add_ms2lda.add_ms2lda._calc_overlap_scores")
+@patch("src.add_ms2lda.add_ms2lda.load_from_mgf")
 def test_add_ms2lda_success(
-    mock_exists,
-    mock_is_file,
-    mock_lda_load,
-    mock_calc,
+    mock_load_mgf,
+    mock_calc_overlap,
     mock_read_cx,
     mock_write_cx,
     mock_params,
     mock_graph,
-    mock_lda_model,
 ) -> None:
     mock_read_cx.return_value = mock_graph
-    mock_lda_load.return_value = mock_lda_model
+    mock_load_mgf.return_value = [
+        Spectrum(np.array([100.1]), np.array([1.0]), {"id": "motif_0"})
+    ]
 
-    # Mock overlap scores matching 2 topics x 2 nodes (columns)
-    mock_overlap = np.array([[0.5, 0.1], [0.0, 0.8]])
-    mock_calc.return_value = (None, None, None, mock_overlap)
+    # Mock overlap scores matching 1 motif x 2 nodes (columns)
+    mock_overlap = np.array([[0.5, 0.1]])
+    mock_calc_overlap.return_value = mock_overlap
 
     add_ms2lda(mock_params)
 
     # Verify motif annotations and attributes assigned to graph nodes
     assert mock_graph.nodes[0]["motifs"] == "0"
     assert mock_graph.nodes[0]["motif_0"] == 1
-    assert mock_graph.nodes[0]["motif_1"] == 0
 
-    assert mock_graph.nodes[1]["motifs"] == "1"
+    assert mock_graph.nodes[1]["motifs"] == ""
     assert mock_graph.nodes[1]["motif_0"] == 0
-    assert mock_graph.nodes[1]["motif_1"] == 1
 
     # Verify graph serialization was called
     mock_write_cx.assert_called_once()
