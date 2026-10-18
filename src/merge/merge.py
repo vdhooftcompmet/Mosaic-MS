@@ -4,36 +4,42 @@ import networkx as nx
 import numpy as np
 import tomotopy as tp
 from matchms import Spectrum
+from matchms.importing.load_spectra import load_from_mgf
 from matchms.similarity.FlashSimilarity import FlashSimilarity
 
 from src.mn.mn import build_graph, filter_base_strategy
 from src.ms2lda.ms2lda import extract_motifs
+from src.utils.configs import MergeConfig
 from src.utils.context import suppress_output
-from src.utils.cx import write_cx
 
 logging.getLogger("matchms").setLevel(logging.ERROR)
 
 
-def merge_motifs(model_paths: list[str]) -> tuple[list[Spectrum], nx.Graph]:
-    models = [tp.LDAModel.load(str(p)) for p in model_paths]
-    all_motifs = []
+def merge_motifs(config: MergeConfig) -> tuple[list[Spectrum], nx.Graph]:
 
-    for model in models:
-        model_motifs = extract_motifs(model, top_n_words=50, charge=1)
-        k = len(model_motifs)
-        for i, model_motif in enumerate(model_motifs):
-            model_motif.set("topic_index", i)
-            model_motif.set("model_k", k)
-            all_motifs.append(model_motif)
+    all_motifs = []
+    for path in config.motif_paths:
+        if path.endswith(".lda"):
+            model = tp.LDAModel.load(path)
+            motifs = extract_motifs(model, top_n_words=50, charge=1)
+        elif path.endswith(".mgf"):
+            motifs = list(load_from_mgf(path))
+        else:
+            raise ValueError()
+
+        k = len(motifs)
+        for i, motif in enumerate(motifs):
+            motif.set("topic_index", i)
+            motif.set("model_k", k)
 
     with suppress_output():
         modified_motifs = _losses_to_peaks(all_motifs)
-        obj = FlashSimilarity(
+        cosine = FlashSimilarity(
             score_type="cosine", matching_mode="fragment", tolerance=0.01
         )
-        similarity = obj.matrix(modified_motifs, modified_motifs)
+        similarity = cosine.matrix(modified_motifs, modified_motifs)
 
-    strat = filter_base_strategy(0.9)
+    strat = filter_base_strategy(config.threshold)
     support = np.zeros_like(similarity)
     G = build_graph(all_motifs, similarity, support, strat)
 
@@ -48,7 +54,7 @@ def merge_motifs(model_paths: list[str]) -> tuple[list[Spectrum], nx.Graph]:
     result: list[Spectrum] = []
 
     for i, nodes in enumerate(motif_clusters):
-        if len(nodes) <= len(models) * 0.75:
+        if len(nodes) <= len(config.motif_paths) * 0.75:
             break
 
         cluster_motifs = [all_motifs[n] for n in nodes]

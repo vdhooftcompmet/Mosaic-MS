@@ -3,7 +3,6 @@ from pathlib import Path
 
 from src.utils.cli import prepare_args
 from src.utils.configs import AnnotationConfig
-from src.utils.cx import write_cx
 
 REPO = Path(__file__).parent.parent.parent.resolve()
 DEFAULT_ANNOTATION_CONFIG = REPO / "config" / "annotation.yaml"
@@ -16,15 +15,12 @@ def main(args: argparse.Namespace):
 
     from matchms.importing import load_from_mgf
 
-    from src.annotation.cluster import build_spectra_graph
-    from src.annotation.fragment import fragment_snapms
-    from src.annotation.merge import merge_motifs
+    from src.annotation.annotation import build_spectra_graph, fragment_snapms
 
-    motifs, motif_graph = merge_motifs(mn_config.models)
-    spectra = list(load_from_mgf(mn_config.mgf))
+    motifs = list(load_from_mgf(args.motifs))
+    spectra = list(load_from_mgf(args.mgf))
+
     spectra_graph = build_spectra_graph(motifs, spectra)
-    write_cx(spectra_graph, "xxxxxx.cx")
-
     fragment_snapms(mn_config, spectra_graph)
 
 
@@ -35,16 +31,16 @@ def build_parser():
     )
     parser.add_argument(
         "-m",
-        "--mgf",
+        "--spectra",
         required=True,
         type=Path,
         help="Path to mgf file",
     )
     parser.add_argument(
-        "--models",
-        nargs="+",
+        "--motifs",
         required=True,
-        help="List of models used to derive motifs",
+        type=Path,
+        help="motifs",
     )
     parser.add_argument(
         "-t",
@@ -109,6 +105,8 @@ def build_parser():
         help="Automatically detect adduct annotations directly from graph properties.",
     )
     return parser
+
+
 
 
 if __name__ == "__main__":
