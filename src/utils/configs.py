@@ -91,12 +91,12 @@ class MS2LDAConfig:
 
 @dataclass
 class AddMS2LDAConfig:
-    model: str
+    motifs: str
     graph: str
     threshold: float
 
     def __post_init__(self):
-        self.model = _resolve_path(self.model)
+        self.motifs = _resolve_path(self.motifs)
         self.graph = _resolve_path(self.graph)
 
     def display(self) -> None:
@@ -243,4 +243,21 @@ class AnnotationConfig:
 
     def display(self) -> None:
         """Display SNAPMS configuration parameters."""
+        _print_formatted_config("SNAPMS Configured Options", self)
+
+
+@dataclass
+class MergeConfig:
+    motif_paths: list[str]
+    threshold: float
+
+    out_graph: str
+    out_motifs: str
+
+    def __post_init__(self):
+        self.motif_paths = [_resolve_path(m) for m in self.motif_paths]
+        self.out_graph = _resolve_path(self.out_graph)
+        self.out_motifs = _resolve_path(self.out_motifs)
+
+    def display(self) -> None:
         _print_formatted_config("SNAPMS Configured Options", self)
