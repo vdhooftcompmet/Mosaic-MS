@@ -25,10 +25,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--defaults", type=str, default=None, help="Path to YAML config file."
     )
     parser.add_argument(
-        "--model",
+        "--motifs",
         required=True,
         type=str,
-        help="Path to trained LDA model file (.lda).",
+        help="Path to motifs.",
     )
     parser.add_argument(
         "--graph",
