@@ -14,13 +14,15 @@ from rich.progress import (
 
 FILE_NAMES = [
     "coconut_db.jsonl",
-    "test_file.mgf",
-    "ms2deepscore_model.pt",
+    "media_screening.mgf",
+    "mn_example.cx",
+    "motifs_example.cxms2deepscore_model.pt",
+    "MSnLib_pos_ms2_merged_filtered_intersection.mgf",
+    "npatlas.jsonl",
+    "snapms_example.cx",
     "Spec2VecModel.model",
     "Spec2VecModel.model.syn1neg.npy",
     "Spec2VecModel.model.wv.vectors.npy",
-    "mn_example.cx",
-    "snapms_example.cx",
 ]
 
 WEB_ADDRESS = "https://zenodo.org/records/22801631/files/"
