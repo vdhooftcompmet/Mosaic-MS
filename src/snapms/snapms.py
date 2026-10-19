@@ -29,6 +29,7 @@ class DBMatch:
     variation: None | str = None
     mz: None | float = None
     mass_error_da: None | float = None
+    neighbor_count: None | int = None
 
 
 def snapms(config: SNAPMSConfig):
@@ -263,7 +264,7 @@ def search_db(
 
     db_matches = db_con.execute(
         """
-        SELECT neutral_mass, smiles, inchikey, morgan_fingerprint
+        SELECT neutral_mass, smiles, inchikey, morgan_fingerprint, neighbor_count
         FROM df
         WHERE neutral_mass BETWEEN ? AND ?
         """,

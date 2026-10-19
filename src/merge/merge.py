@@ -31,6 +31,7 @@ def merge_motifs(config: MergeConfig) -> tuple[list[Spectrum], nx.Graph]:
         for i, motif in enumerate(motifs):
             motif.set("topic_index", i)
             motif.set("model_k", k)
+            all_motifs.append(motif)
 
     with suppress_output():
         modified_motifs = _losses_to_peaks(all_motifs)
@@ -54,7 +55,7 @@ def merge_motifs(config: MergeConfig) -> tuple[list[Spectrum], nx.Graph]:
     result: list[Spectrum] = []
 
     for i, nodes in enumerate(motif_clusters):
-        if len(nodes) <= len(config.motif_paths) * 0.75:
+        if len(nodes) <= len(config.motif_files) * 0.75:
             break
 
         cluster_motifs = [all_motifs[n] for n in nodes]

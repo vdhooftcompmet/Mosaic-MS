@@ -11,6 +11,7 @@ from rich.progress import (
     SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
+    TimeElapsedColumn,  # Added
     TimeRemainingColumn,
 )
 
@@ -41,6 +42,7 @@ def track(
         BarColumn(bar_width=bar_width),
         TaskProgressColumn(),
         MofNCompleteColumn(),
+        TimeElapsedColumn(),  # Added elapsed time column
         TimeRemainingColumn(),
     ]
 
@@ -93,6 +95,7 @@ class RichProgress:
             BarColumn(bar_width=self.bar_width),
             TaskProgressColumn(),
             MofNCompleteColumn(),
+            TimeElapsedColumn(),  # Also added here for consistency if desired
             TimeRemainingColumn(),
             TextColumn("[dim cyan]{task.fields[metrics]}"),
         ]
@@ -139,12 +142,18 @@ class RichProgress:
         if self.progress and self.task_id is not None:
             task = self.progress.tasks[self.task_id]
             target_total = task.total if task.total is not None else task.completed
-            desc = description if description is not None else f"{task.description} (Done)"
+            desc = (
+                description if description is not None else f"{task.description} (Done)"
+            )
             self.progress.update(self.task_id, completed=target_total, description=desc)
 
     def stop_early(self, description: str | None = None):
         """Set total = completed so the bar locks at current progress without errors."""
         if self.progress and self.task_id is not None:
             task = self.progress.tasks[self.task_id]
-            desc = description if description is not None else f"{task.description} (Halted)"
+            desc = (
+                description
+                if description is not None
+                else f"{task.description} (Halted)"
+            )
             self.progress.update(self.task_id, total=task.completed, description=desc)
