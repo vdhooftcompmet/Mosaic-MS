@@ -1,0 +1,3 @@
+threshold: 0.8
+out_graph: results/merged_motifs_graph.cx
+out_motifs: results/merged_motifs.mgf

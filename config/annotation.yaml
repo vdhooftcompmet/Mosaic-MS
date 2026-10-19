@@ -1,0 +1,22 @@
+ppm_error: 10
+min_cluster_size: 0
+max_cluster_size: 200
+min_annotation_size: 2
+cutoff: 0.5
+threshold: 0.01
+
+adduct_list:
+    - "[M+H]+"
+    - "[M+Na]+"
+    - "[2M+Na]+"
+    - "[M+K]+"
+    - "[2M+K]+"
+
+remove_duplicates: True
+detect_adduct: False
+
+reference-db: data/npatlas.jsonl
+result_folder: results/snapms
+graph: results/motif_graph.cx
+dataset_acquisition_type: DIA
+dataset_significant_digits: 2
