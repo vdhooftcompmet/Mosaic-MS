@@ -4,7 +4,7 @@ results/*
 data/*
 !data/.gitkeep
 .venv
-cache
+cache/*
 !cache/.gitkeep
 
 .snakemake/

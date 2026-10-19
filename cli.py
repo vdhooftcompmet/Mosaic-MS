@@ -67,7 +67,8 @@ def handle_run_all(args: argparse.Namespace) -> None:
     """Executes the updated parallel Mosaic-MS pipeline sequentially/concurrently."""
 
     dir = Path("run_all")
-    prepare_directory(dir, overwrite=True)
+    if not dir.exists():
+        prepare_directory(dir, overwrite=True)
 
     # get input
     mgf = args.mgf
@@ -78,14 +79,16 @@ def handle_run_all(args: argparse.Namespace) -> None:
     rescued_graph = str(dir / "rescued.cx")
 
     print("  -> Building Molecular Network...")
-    handle_run_mn(
-        argparse.Namespace(
-            mgf=mgf,
-            base_graph_path=base_graph,
-            threshold_graph_path=threshold_graph,
-            rescued_graph_path=rescued_graph,
+    skip_mn = Path(base_graph).exists() and Path(threshold_graph).exists() and Path(rescued_graph).exists()
+    if not skip_mn:
+        handle_run_mn(
+            argparse.Namespace(
+                mgf=mgf,
+                base_graph_path=base_graph,
+                threshold_graph_path=threshold_graph,
+                rescued_graph_path=rescued_graph,
+            )
         )
-    )
 
     # define file names
     k_values = (
@@ -96,41 +99,48 @@ def handle_run_all(args: argparse.Namespace) -> None:
     motif_paths = [str(dir / f"motifs_k{k}.mgf") for k in k_values]
     model_paths = [str(dir / f"model_k{k}.lda") for k in k_values]
 
+
     print(f"  -> Running MS2LDA for multiple k values: {k_values}...")
     for k, motifs_p, model_p in zip(k_values, motif_paths, model_paths):
-        run_ms2lda_main(
-            argparse.Namespace(
-                mgf=mgf,
-                model_path=model_p,
-                motifs_path=motifs_p,
-                nr_of_motifs=k,
+        skip_ms2lda = Path(motifs_p).exists() and Path(model_p).exists()
+        if not skip_ms2lda:
+            run_ms2lda_main(
+                argparse.Namespace(
+                    mgf=mgf,
+                    model_path=model_p,
+                    motifs_path=motifs_p,
+                    nr_of_motifs=k,
+                )
             )
-        )
 
     # define files
     merged_motifs = str(dir / "merged_motifs.mgf")
     merged_graph = str(dir / "merged_motifs.cx")
 
     print("  -> Merging Mass2Motifs...")
-    run_merge_main(
-        argparse.Namespace(
-            motif_files=motif_paths,
-            out_graph=merged_graph,
-            out_motifs=merged_motifs,
+    skip_merge = Path(merged_motifs).exists() and Path(merged_graph).exists()
+    if not skip_merge:
+        run_merge_main(
+            argparse.Namespace(
+                motif_files=motif_paths,
+                out_graph=merged_graph,
+                out_motifs=merged_motifs,
+            )
         )
-    )
 
     # define files
     annotation_results = str(dir / "motif_annotation")
 
     print("  -> Running Motif-based Annotation...")
-    run_annotation_main(
-        argparse.Namespace(
-            mgf=mgf,
-            motifs=merged_motifs,
-            result_folder=annotation_results,
+    skip_annotation = Path(annotation_results).exists()
+    if not skip_annotation:
+        run_annotation_main(
+            argparse.Namespace(
+                mgf=mgf,
+                motifs=merged_motifs,
+                result_folder=annotation_results,
+            )
         )
-    )
     # define files
     graphs = [base_graph, threshold_graph, rescued_graph]
     results = [
@@ -141,10 +151,22 @@ def handle_run_all(args: argparse.Namespace) -> None:
 
     print("  -> Running SNAP-MS on Molecular Network...")
     for graph, res in zip(graphs, results):
-        handle_run_snapms(
+        skip_snapms = Path(res).exists()
+        if not skip_snapms:
+            handle_run_snapms(
+                argparse.Namespace(
+                    graph=graph,
+                    result_folder=res,
+                )
+            )
+
+    print("  -> Adding Mass2Motifs to Molecular Network...")
+    for graph in graphs:
+        handle_add_ms2lda(
             argparse.Namespace(
                 graph=graph,
-                result_folder=res,
+                motifs=merged_motifs,
+                threshold=0.01
             )
         )
 
