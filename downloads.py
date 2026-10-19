@@ -25,7 +25,7 @@ FILE_NAMES = [
     "Spec2VecModel.model.wv.vectors.npy",
 ]
 
-WEB_ADDRESS = "https://zenodo.org/records/22801631/files/"
+WEB_ADDRESS = "https://zenodo.org/records/23468366/files/"
 DOWNLOAD_SUFFIX = "?download=1"
 DATA_DIR = Path("data")
 
