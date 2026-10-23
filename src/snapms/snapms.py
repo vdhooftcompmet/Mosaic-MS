@@ -367,15 +367,19 @@ def remove_small_subgraphs(
 def add_top_candidate_annotation(graph: nx.Graph) -> None:
     clusters = [x for x in nx.connected_components(graph)]
     counts = [_nr_of_unique_compounds(graph, c) for c in clusters]
+    averages = [_average_neighbour_count(graph, c) for c in clusters]
+    scores = [
+        c
+        if a != 0 else c
+        for c, a, n in zip(counts, averages, clusters)
+    ]
 
-    for c, nodes in zip(counts, clusters):
+    for score, avg, count, nodes in zip(scores, averages, counts, clusters):
         for node in nodes:
-            if max(counts) <= 2:
-                graph.nodes[node]["is_top_candidate"] = False
-            else:
-                graph.nodes[node]["is_top_candidate"] = c == max(counts)
-
-            graph.nodes[node]["ann_mass_diversity"] = c
+            graph.nodes[node]["is_top_candidate"] = score == max(scores)
+            graph.nodes[node]["weighted_score"] = score
+            graph.nodes[node]["ann_mass_diversity"] = count
+            graph.nodes[node]["average_neighbours"] = avg
 
 
 def _nr_of_unique_compounds(graph: nx.Graph, nodes: set) -> int:
@@ -384,6 +388,13 @@ def _nr_of_unique_compounds(graph: nx.Graph, nodes: set) -> int:
         mass_cluster = graph.nodes[node]["mass_cluster"]
         all_mass_clusters.add(mass_cluster)
     return len(all_mass_clusters)
+
+
+def _average_neighbour_count(graph: nx.Graph, nodes: set) -> float:
+    assert len(nodes) != 0
+
+    counts = [graph.nodes[node]["neighbor_count"] for node in nodes]
+    return sum(counts) / len(counts) + 1
 
 
 def assign_mass_cluster(matches: list[DBMatch]) -> list[DBMatch]:
