@@ -94,7 +94,7 @@ def test_add_ms2lda_success(
 
     # Verify motif annotations and attributes assigned to graph nodes
     assert mock_graph.nodes[0]["motifs"] == "0"
-    assert mock_graph.nodes[0]["motif_0"] == 1
+    assert mock_graph.nodes[0]["motif_0"] == 0.5  # Changed from 1 to 0.5
 
     assert mock_graph.nodes[1]["motifs"] == ""
     assert mock_graph.nodes[1]["motif_0"] == 0

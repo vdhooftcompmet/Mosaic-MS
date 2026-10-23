@@ -262,14 +262,27 @@ def search_db(
     lower_bound = neutral_mass - mass_error
     upper_bound = neutral_mass + mass_error
 
-    db_matches = db_con.execute(
-        """
-        SELECT neutral_mass, smiles, inchikey, morgan_fingerprint, neighbor_count
-        FROM df
-        WHERE neutral_mass BETWEEN ? AND ?
-        """,
-        [lower_bound, upper_bound],
-    ).df()
+    try:
+        # Try querying with neighbor_count included
+        db_matches = db_con.execute(
+            """
+            SELECT neutral_mass, smiles, inchikey, morgan_fingerprint, neighbor_count
+            FROM df
+            WHERE neutral_mass BETWEEN ? AND ?
+            """,
+            [lower_bound, upper_bound],
+        ).df()
+    except duckdb.BinderException:
+        # Fallback if neighbor_count column does not exist in the table
+        db_matches = db_con.execute(
+            """
+            SELECT neutral_mass, smiles, inchikey, morgan_fingerprint, NULL as neighbor_count
+            FROM df
+            WHERE neutral_mass BETWEEN ? AND ?
+            """,
+            [lower_bound, upper_bound],
+        ).df()
+
     return db_matches
 
 
@@ -368,11 +381,7 @@ def add_top_candidate_annotation(graph: nx.Graph) -> None:
     clusters = [x for x in nx.connected_components(graph)]
     counts = [_nr_of_unique_compounds(graph, c) for c in clusters]
     averages = [_average_neighbour_count(graph, c) for c in clusters]
-    scores = [
-        c
-        if a != 0 else c
-        for c, a, n in zip(counts, averages, clusters)
-    ]
+    scores = [c if a != 0 else c for c, a, n in zip(counts, averages, clusters)]
 
     for score, avg, count, nodes in zip(scores, averages, counts, clusters):
         for node in nodes:
@@ -393,7 +402,11 @@ def _nr_of_unique_compounds(graph: nx.Graph, nodes: set) -> int:
 def _average_neighbour_count(graph: nx.Graph, nodes: set) -> float:
     assert len(nodes) != 0
 
-    counts = [graph.nodes[node]["neighbor_count"] for node in nodes]
+    counts = [graph.nodes[node].get("neighbor_count") for node in nodes]
+    counts = [c for c in counts if c is not None]
+    if not counts:
+        return 0
+
     return sum(counts) / len(counts) + 1
 
 

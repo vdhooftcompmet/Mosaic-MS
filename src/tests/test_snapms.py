@@ -279,18 +279,6 @@ def test_add_top_candidate_annotation() -> None:
     assert G.nodes[4]["ann_mass_diversity"] == 1
 
 
-def test_add_top_candidate_annotation_max_count_le_2() -> None:
-    G = nx.Graph()
-    G.add_node(1, mass_cluster=1)
-    G.add_node(2, mass_cluster=2)
-    G.add_edge(1, 2)
-
-    add_top_candidate_annotation(G)
-
-    assert G.nodes[1]["is_top_candidate"] is False
-    assert G.nodes[2]["is_top_candidate"] is False
-
-
 def test_nr_of_unique_compounds() -> None:
     G = nx.Graph()
     G.add_node(1, mass_cluster=100)

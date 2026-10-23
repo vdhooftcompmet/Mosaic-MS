@@ -37,14 +37,14 @@ logging.getLogger("matchms").setLevel(logging.ERROR)
 class MassMetadata:
     mz: float
     variation: str
-    mass_error_ppm: float
+    mass_error_da: float
 
 
 @dataclass
 class FragmentMetadata:
     mz: float
     variation: str
-    mass_error_ppm: float
+    mass_error_da: float
     smiles: str
     morgan_fingerprint: str
     mass_cluster: set[int]
@@ -282,7 +282,6 @@ def _clean_and_check_fragment(frag: Chem.Mol):
 
 
 def _filter_valid_mass(fragment_mass: float, adduct: Adduct, valid_mass: float):
-    MASS_ERROR_PPM = 10
 
     variations = []
     for i in range(adduct.multiplier):
@@ -300,13 +299,11 @@ def _filter_valid_mass(fragment_mass: float, adduct: Adduct, valid_mass: float):
         ]
 
     for variation, mass in variations:
-        mass_error_ppm = ((valid_mass - mass) / mass) * 1e6
         mz = valid_mass
-
         mass_error_da = valid_mass - mass
 
         if np.abs(mass_error_da) <= 0.01:
-            yield MassMetadata(mz, variation, mass_error_ppm)
+            yield MassMetadata(mz, variation, mass_error_da)
 
 
 def _deduplicate_fragments(fragments: list[FragmentMetadata]) -> list[FragmentMetadata]:

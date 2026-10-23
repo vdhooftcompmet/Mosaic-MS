@@ -119,7 +119,7 @@ def test_build_spectra_graph(mock_detect_motifs) -> None:
         metadata={"id": "spec_0"},
     )
 
-    G = build_spectra_graph([motif], [spectrum])
+    G = build_spectra_graph([motif], [spectrum], threshold=0.5)
     assert isinstance(G, nx.Graph)
     assert len(G.nodes) == 1
     node_key = list(G.nodes)[0]
