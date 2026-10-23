@@ -130,15 +130,17 @@ def handle_run_all(args: argparse.Namespace) -> None:
 
     # define files
     annotation_results = str(dir / "motif_annotation")
+    graph = str(dir / "spectra_graph.cx")
 
     print("  -> Running Motif-based Annotation...")
-    skip_annotation = Path(annotation_results).exists()
+    skip_annotation = Path(annotation_results).exists() and Path(graph).exists()
     if not skip_annotation:
         run_annotation_main(
             argparse.Namespace(
                 mgf=mgf,
                 motifs=merged_motifs,
                 result_folder=annotation_results,
+                graph=graph
             )
         )
     # define files
@@ -166,7 +168,6 @@ def handle_run_all(args: argparse.Namespace) -> None:
             argparse.Namespace(
                 graph=graph,
                 motifs=merged_motifs,
-                threshold=0.01
             )
         )
 
