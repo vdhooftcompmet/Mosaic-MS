@@ -50,7 +50,7 @@ def add_ms2lda(params: AddMS2LDAConfig) -> None:
         mn.nodes[node]["motifs"] = ";".join(present_motifs)
 
         for ii, score in enumerate(scores):
-            mn.nodes[node][f"motif_{ii}"] = 1 if score > threshold else 0
+            mn.nodes[node][f"motif_{ii}"] = score if score > threshold else 0.0
 
     write_cx(mn, params.graph, MN_STYLE_FILE)
 
