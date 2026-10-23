@@ -3,6 +3,7 @@ from pathlib import Path
 
 from src.utils.cli import prepare_args
 from src.utils.configs import AnnotationConfig
+from src.utils.cx import write_cx
 
 REPO = Path(__file__).parent.parent.parent.resolve()
 DEFAULT_ANNOTATION_CONFIG = REPO / "config" / "annotation.yaml"
@@ -20,7 +21,8 @@ def main(args: argparse.Namespace):
     motifs = list(load_from_mgf(args.motifs))
     spectra = list(load_from_mgf(args.mgf))
 
-    spectra_graph = build_spectra_graph(motifs, spectra)
+    spectra_graph = build_spectra_graph(motifs, spectra, args.threshold)
+    write_cx(spectra_graph, args.graph)
     fragment_snapms(mn_config, spectra_graph)
 
 

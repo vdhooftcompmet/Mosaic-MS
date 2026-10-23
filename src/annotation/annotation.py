@@ -37,14 +37,14 @@ logging.getLogger("matchms").setLevel(logging.ERROR)
 class MassMetadata:
     mz: float
     variation: str
-    mass_error_da: float
+    mass_error_ppm: float
 
 
 @dataclass
 class FragmentMetadata:
     mz: float
     variation: str
-    mass_error_da: float
+    mass_error_ppm: float
     smiles: str
     morgan_fingerprint: str
     mass_cluster: set[int]
@@ -85,11 +85,15 @@ def fragment_snapms(config: AnnotationConfig, graph=None) -> None:
         write_cx(Gsub, save_path, MOTIF_FILE)
 
 
-def build_spectra_graph(motifs: list[Spectrum], spectra: list[Spectrum]) -> nx.Graph:
+def build_spectra_graph(
+    motifs: list[Spectrum], spectra: list[Spectrum], threshold: float
+) -> nx.Graph:
 
     G = nx.Graph()
 
-    for motif_index, spectrum_indices in enumerate(_detect_motifs(motifs, spectra)):
+    for motif_index, spectrum_indices in enumerate(
+        _detect_motifs(motifs, spectra, threshold)
+    ):
         motif = motifs[motif_index]
         motif_metadata = motif.to_dict()
         motif_metadata = {f"motif_{k}": str(v) for k, v in motif_metadata.items()}
@@ -206,8 +210,7 @@ def _derive_valid_fragments(motif: Spectrum, db_match: DBMatch) -> Generator:
         intensities /= n
 
     max_idx = np.argmax(intensities)
-    primary_mz = motif.peaks.mz[max_idx]
-    valid_masses = np.abs([primary_mz])
+    valid_mass = motif.peaks.mz[max_idx]
 
     adduct = ADDUCT_RULES[db_match.adduct]
 
@@ -219,7 +222,7 @@ def _derive_valid_fragments(motif: Spectrum, db_match: DBMatch) -> Generator:
     for substructure in substructures:
         fragment_mass = rdMolDescriptors.CalcExactMolWt(substructure)
 
-        for mass_metadata in _filter_valid_mass(fragment_mass, adduct, valid_masses):
+        for mass_metadata in _filter_valid_mass(fragment_mass, adduct, valid_mass):
             morgan_fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
                 substructure, radius=2, nBits=2048
             )
@@ -232,8 +235,10 @@ def _derive_valid_fragments(motif: Spectrum, db_match: DBMatch) -> Generator:
             yield fragment
 
 
-def _greedy_substructure_finder(mol: Chem.Mol):
+def _greedy_substructure_finder(mol: Chem.Mol, depth=2):
     yield mol
+    if depth == 0:
+        return
 
     n = mol.GetNumBonds()
     if n == 0:
@@ -249,17 +254,26 @@ def _greedy_substructure_finder(mol: Chem.Mol):
     for index in valid_single_bonds:
         fragmented_mol = Chem.FragmentOnBonds(mol, [int(index)])
         fragments = Chem.GetMolFrags(fragmented_mol, asMols=True, sanitizeFrags=False)
+
         for frag in fragments:
             res = _clean_and_check_fragment(frag)
-            if res is not None:
-                yield res
+
+            if res is None:
+                continue
+
+            yield res
+
+            if depth >= 1:
+                yield from _greedy_substructure_finder(frag, depth-1)
 
 
 def _clean_and_check_fragment(frag: Chem.Mol):
     """Clears aromaticity, sanitizes, and deduplicates on-the-fly to save compute."""
     for atom in frag.GetAtoms():
         if atom.GetAtomicNum() == 0:  # Atomic number 0 represents a dummy atom (*)
-            atom.SetIsotope(0)
+            atom.SetIsotope(
+                0
+            )  # This results in removal of the dummy atom number, helping us to merge identical SMILES later
     try:
         Chem.SanitizeMol(frag)
         return frag
@@ -267,8 +281,8 @@ def _clean_and_check_fragment(frag: Chem.Mol):
         return None
 
 
-def _filter_valid_mass(fragment_mass: float, adduct: Adduct, valid_masses: np.ndarray):
-    DALTON_ERROR = 0.1
+def _filter_valid_mass(fragment_mass: float, adduct: Adduct, valid_mass: float):
+    MASS_ERROR_PPM = 10
 
     variations = []
     for i in range(adduct.multiplier):
@@ -286,16 +300,16 @@ def _filter_valid_mass(fragment_mass: float, adduct: Adduct, valid_masses: np.nd
         ]
 
     for variation, mass in variations:
-        delta = valid_masses - mass
-        i = np.argmin(np.abs(delta))
+        mass_error_ppm = ((valid_mass - mass) / mass) * 1e6
+        mz = valid_mass
 
-        mz = valid_masses[i]
-        mass_error = delta[i]
-        if np.abs(mass_error) <= DALTON_ERROR:
-            yield MassMetadata(mz, variation, mass_error)
+        mass_error_da = valid_mass - mass
+
+        if np.abs(mass_error_da) <= 0.01:
+            yield MassMetadata(mz, variation, mass_error_ppm)
 
 
-def _deduplicate_fragments(fragments: list[FragmentMetadata]):
+def _deduplicate_fragments(fragments: list[FragmentMetadata]) -> list[FragmentMetadata]:
     seen: dict[str, FragmentMetadata] = {}
 
     for frag in fragments:
@@ -342,16 +356,18 @@ def _get_edges(
 
     dice_matrix = np.zeros(shape=(len(matches), len(matches)))
     for i, fp in enumerate(fingerprints):
-        dice_matrix[i, i + 1 :] = DataStructs.BulkDiceSimilarity(
-            fp, fingerprints[i + 1 :]
-        )
+        # we only calculate and fill in one triangle to the matrix to save compute
+        similarity = DataStructs.BulkDiceSimilarity(fp, fingerprints[i + 1 :])
+        dice_matrix[i, i + 1 :] = similarity
 
     rows, cols = np.where(np.triu(dice_matrix, k=1) > cutoff)
 
     result = []
     for u, v in zip(rows, cols):
         is_invalid = len(matches[u].mass_cluster | matches[v].mass_cluster) <= 1
-        if is_invalid:
+        if (
+            is_invalid
+        ):  # edges between nodes representing the same single cluster are not drawn
             continue
 
         strength = dice_matrix[u, v]
@@ -417,19 +433,17 @@ def _get_unique_id() -> int:
     return ID_COUNTER
 
 
-def _detect_motifs(motifs: list[Spectrum], spectra: list[Spectrum]):
+def _detect_motifs(motifs: list[Spectrum], spectra: list[Spectrum], threshold: float):
     overlap_scores = _calc_overlap_scores(motifs, spectra, True, 2)
-
-    threshold = 0.01
 
     for motif_index in range(overlap_scores.shape[0]):
         scores = overlap_scores[motif_index, :]
         assert len(scores) == len(spectra)
 
         above_threshold = np.where(scores > threshold)[0]
-        top_n = np.argsort(scores)[-10:]
-        intersect = np.intersect1d(above_threshold, top_n)
-        indices = [int(x) for x in intersect]
+        # top_n = np.argsort(scores)[-10:]
+        # intersect = np.intersect1d(above_threshold, top_n)
+        indices = [int(x) for x in above_threshold]
         yield indices
 
 
